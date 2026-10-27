@@ -1,0 +1,502 @@
+[
+  {
+    "id": "breakfast-1",
+    "title": "Сирники з ягодами та йогуртом",
+    "file": "breakfast-1.png"
+  },
+  {
+    "id": "breakfast-2",
+    "title": "Сирна миска з бананом і какао",
+    "file": "breakfast-2.png"
+  },
+  {
+    "id": "breakfast-3",
+    "title": "Вівсянка з бананом і горіхами",
+    "file": "breakfast-3.png"
+  },
+  {
+    "id": "breakfast-4",
+    "title": "Нічна вівсянка з ягодами",
+    "file": "breakfast-4.png"
+  },
+  {
+    "id": "breakfast-5",
+    "title": "Лаваш із куркою та сиром",
+    "file": "breakfast-5.png"
+  },
+  {
+    "id": "breakfast-6",
+    "title": "Тост із сиром і помідором",
+    "file": "breakfast-6.png"
+  },
+  {
+    "id": "breakfast-7",
+    "title": "Сендвіч з індичкою та огірком",
+    "file": "breakfast-7.png"
+  },
+  {
+    "id": "breakfast-8",
+    "title": "Йогурт із вівсянкою та персиком",
+    "file": "breakfast-8.png"
+  },
+  {
+    "id": "breakfast-9",
+    "title": "Омлет у лаваші",
+    "file": "breakfast-9.png"
+  },
+  {
+    "id": "breakfast-10",
+    "title": "Гречка з сиром і овочами",
+    "file": "breakfast-10.png"
+  },
+  {
+    "id": "breakfast-11",
+    "title": "Ліниві вареники з ягодами",
+    "file": "breakfast-11.png"
+  },
+  {
+    "id": "breakfast-12",
+    "title": "Запечена вівсянка з яблуком",
+    "file": "breakfast-12.png"
+  },
+  {
+    "id": "breakfast-13",
+    "title": "Хлібці з хумусом і огірком",
+    "file": "breakfast-13.png"
+  },
+  {
+    "id": "breakfast-14",
+    "title": "Сирна запіканка з бананом",
+    "file": "breakfast-14.png"
+  },
+  {
+    "id": "breakfast-15",
+    "title": "Тост з авокадо та кисломолочним сиром",
+    "file": "breakfast-15.png"
+  },
+  {
+    "id": "breakfast-16",
+    "title": "Кускус із йогуртом та ягодами",
+    "file": "breakfast-16.png"
+  },
+  {
+    "id": "breakfast-17",
+    "title": "Лаваш із сиром та яблуком",
+    "file": "breakfast-17.png"
+  },
+  {
+    "id": "breakfast-18",
+    "title": "Сендвіч із прихованим вареним яйцем",
+    "file": "breakfast-18.png"
+  },
+  {
+    "id": "breakfast-19",
+    "title": "Гарбузова вівсянка",
+    "file": "breakfast-19.png"
+  },
+  {
+    "id": "breakfast-20",
+    "title": "Миска з йогуртом, грушею та какао",
+    "file": "breakfast-20.png"
+  },
+  {
+    "id": "breakfast-21",
+    "title": "Курячий сендвіч із йогуртовим соусом",
+    "file": "breakfast-21.png"
+  },
+  {
+    "id": "breakfast-22",
+    "title": "Гречана миска з грибами й сиром",
+    "file": "breakfast-22.png"
+  },
+  {
+    "id": "breakfast-23",
+    "title": "Бананові оладки з йогуртом",
+    "file": "breakfast-23.png"
+  },
+  {
+    "id": "breakfast-24",
+    "title": "Крем-сирний тост із ягодами",
+    "file": "breakfast-24.png"
+  },
+  {
+    "id": "lunch-1",
+    "title": "Домашній борщ із квасолею",
+    "file": "lunch-1.png"
+  },
+  {
+    "id": "lunch-2",
+    "title": "Куряча котлета, гречка й салат",
+    "file": "lunch-2.png"
+  },
+  {
+    "id": "lunch-3",
+    "title": "Котлета з сиром і картопляним пюре",
+    "file": "lunch-3.png"
+  },
+  {
+    "id": "lunch-4",
+    "title": "Індичка з булгуром і овочами",
+    "file": "lunch-4.png"
+  },
+  {
+    "id": "lunch-5",
+    "title": "Лосось із картоплею та зеленню",
+    "file": "lunch-5.png"
+  },
+  {
+    "id": "lunch-6",
+    "title": "Біла риба з рисом і броколі",
+    "file": "lunch-6.png"
+  },
+  {
+    "id": "lunch-7",
+    "title": "Паста з куркою й томатами",
+    "file": "lunch-7.png"
+  },
+  {
+    "id": "lunch-8",
+    "title": "Паста з тунцем",
+    "file": "lunch-8.png"
+  },
+  {
+    "id": "lunch-9",
+    "title": "Курячий суп із рисом",
+    "file": "lunch-9.png"
+  },
+  {
+    "id": "lunch-10",
+    "title": "Сочевичний суп із томатами",
+    "file": "lunch-10.png"
+  },
+  {
+    "id": "lunch-11",
+    "title": "Окрошка з куркою на кефірі",
+    "file": "lunch-11.png"
+  },
+  {
+    "id": "lunch-12",
+    "title": "Яловичина з гречкою",
+    "file": "lunch-12.png"
+  },
+  {
+    "id": "lunch-13",
+    "title": "Домашній боул із куркою та рисом",
+    "file": "lunch-13.png"
+  },
+  {
+    "id": "lunch-14",
+    "title": "Тефтелі з індички та пюре",
+    "file": "lunch-14.png"
+  },
+  {
+    "id": "lunch-15",
+    "title": "Лаваш із яловичиною та овочами",
+    "file": "lunch-15.png"
+  },
+  {
+    "id": "lunch-16",
+    "title": "Картопля з квасолею та овочами",
+    "file": "lunch-16.png"
+  },
+  {
+    "id": "lunch-17",
+    "title": "Рис із креветками та овочами",
+    "file": "lunch-17.png"
+  },
+  {
+    "id": "lunch-18",
+    "title": "Гречка з грибами та квасолею",
+    "file": "lunch-18.png"
+  },
+  {
+    "id": "lunch-19",
+    "title": "Салат із куркою та хлібцями",
+    "file": "lunch-19.png"
+  },
+  {
+    "id": "lunch-20",
+    "title": "Свинина з картоплею та капустяним салатом",
+    "file": "lunch-20.png"
+  },
+  {
+    "id": "lunch-21",
+    "title": "Овочеве рагу з куркою",
+    "file": "lunch-21.png"
+  },
+  {
+    "id": "lunch-22",
+    "title": "Булгур із нутом і фетою",
+    "file": "lunch-22.png"
+  },
+  {
+    "id": "dinner-1",
+    "title": "Курка з овочами на одному деку",
+    "file": "dinner-1.png"
+  },
+  {
+    "id": "dinner-2",
+    "title": "Індичка з грибами в йогуртовому соусі",
+    "file": "dinner-2.png"
+  },
+  {
+    "id": "dinner-3",
+    "title": "Запечена риба з кабачком",
+    "file": "dinner-3.png"
+  },
+  {
+    "id": "dinner-4",
+    "title": "Лосось із броколі",
+    "file": "dinner-4.png"
+  },
+  {
+    "id": "dinner-5",
+    "title": "Салат із тунцем та квасолею",
+    "file": "dinner-5.png"
+  },
+  {
+    "id": "dinner-6",
+    "title": "Тепла миска з нутом і гарбузом",
+    "file": "dinner-6.png"
+  },
+  {
+    "id": "dinner-7",
+    "title": "Гречка з куркою та морквою",
+    "file": "dinner-7.png"
+  },
+  {
+    "id": "dinner-8",
+    "title": "Лаваш із сиром та зеленню",
+    "file": "dinner-8.png"
+  },
+  {
+    "id": "dinner-9",
+    "title": "Домашній суші-боул із запеченим лососем",
+    "file": "dinner-9.png"
+  },
+  {
+    "id": "dinner-10",
+    "title": "Овочевий омлет із сиром",
+    "file": "dinner-10.png"
+  },
+  {
+    "id": "dinner-11",
+    "title": "Печена картопля з кисломолочним сиром",
+    "file": "dinner-11.png"
+  },
+  {
+    "id": "dinner-12",
+    "title": "Тофу з рисом та овочами",
+    "file": "dinner-12.png"
+  },
+  {
+    "id": "dinner-13",
+    "title": "Тушкована капуста з індичкою",
+    "file": "dinner-13.png"
+  },
+  {
+    "id": "dinner-14",
+    "title": "Курячі котлети з овочевим салатом",
+    "file": "dinner-14.png"
+  },
+  {
+    "id": "dinner-15",
+    "title": "Крем-суп із гарбуза та нутом",
+    "file": "dinner-15.png"
+  },
+  {
+    "id": "dinner-16",
+    "title": "Яловичина з перцем та кускусом",
+    "file": "dinner-16.png"
+  },
+  {
+    "id": "dinner-17",
+    "title": "Салат із моцарелою та хлібом",
+    "file": "dinner-17.png"
+  },
+  {
+    "id": "dinner-18",
+    "title": "Квасоля з томатами та фетою",
+    "file": "dinner-18.png"
+  },
+  {
+    "id": "dinner-19",
+    "title": "Паста з грибами та йогуртом",
+    "file": "dinner-19.png"
+  },
+  {
+    "id": "dinner-20",
+    "title": "Теплий салат із куркою та гарбузом",
+    "file": "dinner-20.png"
+  },
+  {
+    "id": "dinner-21",
+    "title": "Курячий салат із йогуртовою заправкою",
+    "file": "dinner-21.png"
+  },
+  {
+    "id": "dinner-22",
+    "title": "Нут із броколі та лимоном",
+    "file": "dinner-22.png"
+  },
+  {
+    "id": "snack-1",
+    "title": "Йогурт із ягодами та насінням",
+    "file": "snack-1.png"
+  },
+  {
+    "id": "snack-2",
+    "title": "Банан із арахісовою пастою",
+    "file": "snack-2.png"
+  },
+  {
+    "id": "snack-3",
+    "title": "Яблуко, сир і хлібці",
+    "file": "snack-3.png"
+  },
+  {
+    "id": "snack-4",
+    "title": "Овочеві палички з хумусом",
+    "file": "snack-4.png"
+  },
+  {
+    "id": "snack-5",
+    "title": "Сирний крем із какао",
+    "file": "snack-5.png"
+  },
+  {
+    "id": "snack-6",
+    "title": "Мінілаваш з індичкою",
+    "file": "snack-6.png"
+  },
+  {
+    "id": "snack-7",
+    "title": "Груша з йогуртом та горіхами",
+    "file": "snack-7.png"
+  },
+  {
+    "id": "snack-8",
+    "title": "Хлібці з тунцем і огірком",
+    "file": "snack-8.png"
+  },
+  {
+    "id": "snack-9",
+    "title": "Кефір і банан",
+    "file": "snack-9.png"
+  },
+  {
+    "id": "snack-10",
+    "title": "Сендвіч із хумусом та морквою",
+    "file": "snack-10.png"
+  },
+  {
+    "id": "snack-11",
+    "title": "Кисломолочний сир із персиком",
+    "file": "snack-11.png"
+  },
+  {
+    "id": "snack-12",
+    "title": "Апельсин і горіхи",
+    "file": "snack-12.png"
+  },
+  {
+    "id": "snack-13",
+    "title": "Помідори з моцарелою",
+    "file": "snack-13.png"
+  },
+  {
+    "id": "snack-14",
+    "title": "Вівсяний стаканчик із йогуртом",
+    "file": "snack-14.png"
+  },
+  {
+    "id": "snack-15",
+    "title": "Тост із куркою та вершковим сиром",
+    "file": "snack-15.png"
+  },
+  {
+    "id": "snack-16",
+    "title": "Йогурт із ківі та чіа",
+    "file": "snack-16.png"
+  },
+  {
+    "id": "dessert-1",
+    "title": "Шоколадний сирний мус",
+    "file": "dessert-1.png"
+  },
+  {
+    "id": "dessert-2",
+    "title": "Запечене яблуко з сиром",
+    "file": "dessert-2.png"
+  },
+  {
+    "id": "dessert-3",
+    "title": "Банановий йогуртовий десерт",
+    "file": "dessert-3.png"
+  },
+  {
+    "id": "dessert-4",
+    "title": "Чіа-пудинг із ягодами",
+    "file": "dessert-4.png"
+  },
+  {
+    "id": "dessert-5",
+    "title": "Лаваш із вишнями та сиром",
+    "file": "dessert-5.png"
+  },
+  {
+    "id": "dessert-6",
+    "title": "Груша з шоколадом і йогуртом",
+    "file": "dessert-6.png"
+  },
+  {
+    "id": "dessert-7",
+    "title": "Сирники з какао",
+    "file": "dessert-7.png"
+  },
+  {
+    "id": "dessert-8",
+    "title": "Ягідний десерт у склянці",
+    "file": "dessert-8.png"
+  },
+  {
+    "id": "dessert-9",
+    "title": "Мінісирна запіканка з какао",
+    "file": "dessert-9.png"
+  },
+  {
+    "id": "dessert-10",
+    "title": "Запечений банан із шоколадом",
+    "file": "dessert-10.png"
+  },
+  {
+    "id": "dessert-11",
+    "title": "Йогуртовий десерт із персиком",
+    "file": "dessert-11.png"
+  },
+  {
+    "id": "dessert-12",
+    "title": "Сирний крем із джемом",
+    "file": "dessert-12.png"
+  },
+  {
+    "id": "dessert-13",
+    "title": "Вівсяне печиво з бананом",
+    "file": "dessert-13.png"
+  },
+  {
+    "id": "dessert-14",
+    "title": "Гарбузовий сирний крем",
+    "file": "dessert-14.png"
+  },
+  {
+    "id": "dessert-15",
+    "title": "Яблучний крамбл у формочці",
+    "file": "dessert-15.png"
+  },
+  {
+    "id": "dessert-16",
+    "title": "Сирна миска з ягодами та кокосом",
+    "file": "dessert-16.png"
+  }
+]

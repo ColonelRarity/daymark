@@ -1,0 +1,10 @@
+{
+  "name": "daymark",
+  "private": true,
+  "scripts": {
+    "concept": "npx --yes serve concept/dist -p 4173",
+    "mobile": "npm --prefix mobile run web -- --port 8090",
+    "test": "npm --prefix mobile test",
+    "test:concept": "node concept/tests/core.cjs && node concept/tests/flows.cjs && node concept/tests/sport-coach.cjs && node concept/tests/food-personal.cjs"
+  }
+}
