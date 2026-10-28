@@ -15,6 +15,7 @@ export type Meal = {
   c: number | null;
   slot: "breakfast" | "lunch" | "dinner" | "snack" | "drink";
   emoji: string;
+  photoId?: string;
 };
 
 export type CustomFood = {

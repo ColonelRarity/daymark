@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { SpaceScreen, PageTop } from "@/src/components/Shell";
+import { trialLabel, useDevice } from "@/src/device";
 import { DIETS } from "@/src/nutrition/calc";
 import { useStore } from "@/src/store";
 import { theme } from "@/src/theme";
@@ -16,6 +17,7 @@ const FOCUS = [
 
 export default function ProfileScreen() {
   const { state, setName, setCalories, setDiet, setStepsTarget, setWeight } = useStore();
+  const { device, deleteAccount } = useDevice();
   const [name, setLocalName] = useState(state.name);
   const [calories, setLocalCalories] = useState(state.calories == null ? "" : String(state.calories));
   const [steps, setSteps] = useState(String(state.stepsTarget || ""));
@@ -28,6 +30,10 @@ export default function ProfileScreen() {
         title="Тут усе по-твоєму."
         action={<Pressable style={styles.blueSmall} onPress={() => router.push("/onboard")}><Text style={styles.blueSmallText}>{state.demo ? "Почати свою ціль" : "＋ Нова ціль"}</Text></Pressable>}
       />
+      <Pressable style={styles.context} onPress={() => router.push("/auth")}><Text style={styles.contextMark}>{device.account ? "✓" : "→"}</Text><View style={{ flex: 1 }}><Text style={styles.contextTitle}>{device.account ? device.account.name : "Увійти з Apple або Google"}</Text><Text style={styles.contextSub}>{device.account ? (device.account.provider === "apple" ? "Apple" : "Google") : "Акаунт для відновлення підписки"}</Text></View><Text>↗</Text></Pressable>
+      <Pressable style={styles.context} onPress={() => router.push("/paywall")}><Text style={styles.contextMark}>✦</Text><View style={{ flex: 1 }}><Text style={styles.contextTitle}>Підписка</Text><Text style={styles.contextSub}>{trialLabel(device.subscription)}</Text></View><Text>↗</Text></Pressable>
+      <Pressable style={styles.context} onPress={() => router.push("/reminders")}><Text style={styles.contextMark}>◷</Text><View style={{ flex: 1 }}><Text style={styles.contextTitle}>Нагадування</Text><Text style={styles.contextSub}>{device.remindersOn ? "Увімкнені" : "Сніданок, обід, вечеря, перекус і вода"}</Text></View><Text>↗</Text></Pressable>
+      {device.account ? <Pressable onPress={deleteAccount}><Text style={styles.delete}>Видалити акаунт і локальні дані</Text></Pressable> : null}
       <Pressable style={styles.context}><Text style={styles.contextMark}>≈</Text><View style={{ flex: 1 }}><Text style={styles.contextTitle}>Мій план калорій і БЖВ</Text><Text style={styles.contextSub}>Розрахувати за параметрами й активністю</Text></View><Text>↗</Text></Pressable>
       <Pressable style={styles.context}><Text style={styles.contextMark}>✦</Text><View style={{ flex: 1 }}><Text style={styles.contextTitle}>Мій контекст і помічник</Text><Text style={styles.contextSub}>Активність, параметри, БЖВ і підказки</Text></View><Text>↗</Text></Pressable>
       <View style={styles.panel}>
@@ -93,4 +99,5 @@ const styles = StyleSheet.create({
   help: { color: theme.muted, fontSize: 12, marginTop: 8 },
   save: { backgroundColor: theme.blue, borderRadius: 12, minHeight: 46, alignItems: "center", justifyContent: "center", marginTop: 16 },
   saveText: { color: "#fff", fontWeight: "800" },
+  delete: { color: "#9B2C2C", fontWeight: "800", marginBottom: 12 },
 });

@@ -84,7 +84,7 @@ export default function DiaryScreen() {
                 <View style={styles.visual}><Text style={styles.emoji}>{meal.emoji}</Text></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.foodName}>{meal.name}</Text>
-                  <Text style={styles.foodMeta}>{num(meal.grams)} {meal.unit === "ml" ? "мл" : "г"} · {meal.id.startsWith("demo") ? "демо-запис" : "мій запис"}</Text>
+                  <Text style={styles.foodMeta}>{num(meal.grams)} {meal.unit === "ml" ? "мл" : "г"} · {meal.photoId ? "фото на пристрої" : meal.id.startsWith("demo") ? "демо-запис" : "мій запис"}</Text>
                 </View>
                 <Text style={styles.foodKcal}>{meal.kcal == null ? "—" : num(meal.kcal)}</Text>
               </Pressable>

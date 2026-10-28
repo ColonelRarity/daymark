@@ -148,7 +148,14 @@ export function searchCatalog(custom: CustomFood[], query: string, category: str
     if (category === "drink-all" && item.category !== "drinks" && item.category !== "alcohol" && item.unit !== "ml") return false;
     if (!["all", "mine", "dishes", "drink-all"].includes(category) && item.category !== category) return false;
     return terms.every((term) => item.hay.includes(term));
-  }).sort((a, b) => Number(a.kind === "restaurant") - Number(b.kind === "restaurant"));
+  }).sort((a, b) => {
+    const rank = (item: CatalogItem) => {
+      const name = text(item.name);
+      const leads = terms.some((term) => name.startsWith(term)) ? 0 : 1;
+      return leads * 2 + (item.kind === "restaurant" ? 1 : 0);
+    };
+    return rank(a) - rank(b);
+  });
 }
 
 export function recipeCuisine(title: string) {

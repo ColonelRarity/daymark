@@ -8,7 +8,13 @@
     "scheme": "daymark",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.daymark.ios",
+      "usesAppleSignIn": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Камера потрібна, щоб сфотографувати страву. Знімок лишається на цьому пристрої.",
+        "NSPhotoLibraryUsageDescription": "Галерея потрібна, щоб додати фото страви. Знімок лишається на цьому пристрої."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +23,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "app.daymark.android"
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +39,15 @@
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#F4F5F0"
+        }
+      ],
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "sounds": []
         }
       ]
     ],
