@@ -10,7 +10,7 @@ function weekValid(p){return p&&p.version===2&&Array.isArray(p.days)&&p.days.len
 if(!weekValid(weekStudio))weekStudio=null;
 state.weekStudio=weekStudio;
 const originalWeekValidation=validateState;
-validateState=function(data){const out=originalWeekValidation(data);out.weekStudio=weekValid(data.weekStudio)?data.weekStudio:null;return out;};
+validateState=function(data,options){const out=originalWeekValidation(data,options);out.weekStudio=weekValid(data.weekStudio)?data.weekStudio:null;return out;};
 
 function weekOptions(opts,current){return opts.map(([v,t])=>'<option value="'+v+'" '+(String(current)===String(v)?'selected':'')+'>'+t+'</option>').join('');}
 function weekGoalPurpose(){return GOAL_TEMPLATES[goal().kind]?.nutrition||'maintain';}

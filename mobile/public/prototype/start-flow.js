@@ -159,6 +159,17 @@ function finishStart() {
   const minutes = { "Без тренувань": 0, "1–2 рази": 90, "3–4 рази": 180, "5+ разів": 250 };
   const activity = { seated: "seated", walks: "walks", train: "train3", active: "physical" };
   finishingSetup = true;
+  /* A repeated start changes the goal and the plan. It never drops what the person already logged. */
+  const previous = state && !state.demo ? state : null;
+  const keepGoals = previous && Array.isArray(previous.goals) ? previous.goals.filter(item => item && item.id !== "setup" && item.id !== goal.id) : [];
+  const carried = previous ? {
+    logs: previous.logs && typeof previous.logs === "object" ? previous.logs : {},
+    favorites: Array.isArray(previous.favorites) ? previous.favorites : [],
+    customFoods: Array.isArray(previous.customFoods) ? previous.customFoods : [],
+    recipeExtras: previous.recipeExtras,
+    smartMeta: previous.smartMeta && typeof previous.smartMeta === "object" ? { weights: Array.isArray(previous.smartMeta.weights) ? previous.smartMeta.weights : [] } : undefined,
+    weekStudio: previous.weekStudio
+  } : { logs: {}, favorites: [], customFoods: [] };
   state = {
     version: 1,
     demo: false,
@@ -181,12 +192,12 @@ function finishStart() {
       motion: true,
       weeklyMinutes: Object.prototype.hasOwnProperty.call(minutes, startDraft.workouts) ? minutes[startDraft.workouts] : null
     },
-    goals: [goal],
+    goals: [goal].concat(keepGoals).slice(0, 30),
     active: goal.id,
-    logs: {},
-    favorites: [],
+    logs: carried.logs,
+    favorites: carried.favorites,
     fastingStart: null,
-    customFoods: [],
+    customFoods: carried.customFoods,
     startChoices: {
       goal: startDraft.goal,
       custom: startDraft.custom.trim(),
@@ -204,6 +215,9 @@ function finishStart() {
       goalDate: validDate(startDraft.goalDate) ? startDraft.goalDate : ""
     }
   };
+  if (carried.recipeExtras) state.recipeExtras = carried.recipeExtras;
+  if (carried.smartMeta) state.smartMeta = carried.smartMeta;
+  if (carried.weekStudio) state.weekStudio = carried.weekStudio;
   selectedDate = start;
   monthView = start.slice(0, 7);
   if (typeof computeSmartPlan === "function" && typeof applySmartPlan === "function") {

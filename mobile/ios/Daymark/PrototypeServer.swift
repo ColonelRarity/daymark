@@ -50,39 +50,81 @@ enum PrototypeServer {
     }
   }
 
-  private static func readRequest(_ client: Int32) -> String? {
-    var timeout = timeval(tv_sec: 2, tv_usec: 0)
+  private struct Request {
+    let method: String
+    let path: String
+    let body: Data
+  }
+
+  private static let headerTerminator = Data("\r\n\r\n".utf8)
+  private static let maxBody = 64 * 1024 * 1024
+
+  private static func readRequest(_ client: Int32) -> Request? {
+    var timeout = timeval(tv_sec: 5, tv_usec: 0)
     setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
     var nosig: Int32 = 1
     setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &nosig, socklen_t(MemoryLayout<Int32>.size))
     var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 2048)
-    while data.count < 16384 {
-      if let text = String(data: data, encoding: .isoLatin1), text.contains("\r\n\r\n") {
-        return text
-      }
+    var buffer = [UInt8](repeating: 0, count: 65536)
+    var headerEnd: Range<Data.Index>? = nil
+    while headerEnd == nil && data.count < 65536 {
       let count = read(client, &buffer, buffer.count)
       if count > 0 {
         data.append(buffer, count: count)
+        headerEnd = data.range(of: headerTerminator)
       } else if count < 0 && errno == EINTR {
         continue
       } else {
         break
       }
     }
-    guard let text = String(data: data, encoding: .isoLatin1), text.contains("\r\n\r\n") else { return nil }
-    return text
+    guard let end = headerEnd, let head = String(data: data[data.startIndex..<end.lowerBound], encoding: .isoLatin1) else { return nil }
+    let lines = head.components(separatedBy: "\r\n")
+    guard let first = lines.first else { return nil }
+    let parts = first.split(separator: " ")
+    guard parts.count >= 2 else { return nil }
+    var contentLength = 0
+    for line in lines.dropFirst() {
+      let pair = line.split(separator: ":", maxSplits: 1)
+      if pair.count == 2, pair[0].trimmingCharacters(in: .whitespaces).lowercased() == "content-length" {
+        contentLength = Int(pair[1].trimmingCharacters(in: .whitespaces)) ?? 0
+      }
+    }
+    guard contentLength >= 0, contentLength <= maxBody else { return nil }
+    var body = Data(data[end.upperBound..<data.endIndex])
+    while body.count < contentLength {
+      let count = read(client, &buffer, min(buffer.count, contentLength - body.count))
+      if count > 0 {
+        body.append(buffer, count: count)
+      } else if count < 0 && errno == EINTR {
+        continue
+      } else {
+        break
+      }
+    }
+    guard body.count >= contentLength else { return nil }
+    return Request(method: String(parts[0]), path: String(parts[1]), body: body.prefix(contentLength))
   }
 
   private static func respond(_ client: Int32) {
-    guard let text = readRequest(client) else { return }
-    guard let line = text.split(separator: "\r\n", maxSplits: 1, omittingEmptySubsequences: false).first else { return }
-    let parts = line.split(separator: " ")
-    guard parts.count >= 2, parts[0] == "GET" else {
+    guard let request = readRequest(client) else { return }
+    let requestPath = request.path
+    if requestPath == "/store" || requestPath.hasPrefix("/store?") {
+      switch request.method {
+      case "GET":
+        send(client, status: 200, body: LocalStore.readResponse(), type: "application/json; charset=utf-8")
+      case "PUT", "POST":
+        let ok = LocalStore.write(request.body)
+        send(client, status: ok ? 200 : 422, body: Data((ok ? "{\"ok\":true}" : "{\"ok\":false,\"reason\":\"invalid\"}").utf8), type: "application/json; charset=utf-8")
+      default:
+        send(client, status: 405, body: Data(), type: "text/plain")
+      }
+      return
+    }
+    guard request.method == "GET" else {
       send(client, status: 405, body: Data(), type: "text/plain")
       return
     }
-    let requestPath = String(parts[1])
     if requestPath == "/health/steps" || requestPath.hasPrefix("/health/steps?") {
       send(client, status: 200, body: PhoneSteps.json(), type: "application/json; charset=utf-8")
       return
@@ -141,7 +183,7 @@ enum PrototypeServer {
   }
 
   private static func send(_ client: Int32, status: Int, body: Data, type: String) {
-    let reason = status == 200 ? "OK" : (status == 404 ? "Not Found" : "Error")
+    let reason = status == 200 ? "OK" : (status == 404 ? "Not Found" : status == 422 ? "Unprocessable" : "Error")
     let cache = (type.hasPrefix("image/") || type.hasPrefix("font/")) ? "public, max-age=31536000" : "no-cache"
     let header = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nCache-Control: \(cache)\r\n\r\n"
     writeAll(client, Data(header.utf8))
@@ -167,6 +209,111 @@ enum PrototypeServer {
 }
 
 private func ignoreSignal(_ signal: Int32) {}
+
+/// The person's data as one JSON file in Application Support, not in WebView storage.
+/// Every write goes to a temp file and is renamed over the previous one; the previous
+/// valid copy is kept as `store.bak`. A damaged main file is quarantined, never deleted.
+enum LocalStore {
+  private static let lock = NSLock()
+
+  private static var directory: URL? {
+    guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+    let dir = base.appendingPathComponent("Daymark", isDirectory: true)
+    if !FileManager.default.fileExists(atPath: dir.path) {
+      try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+    return dir
+  }
+
+  private static var mainURL: URL? { directory?.appendingPathComponent("store.json") }
+  private static var backupURL: URL? { directory?.appendingPathComponent("store.bak") }
+  private static var tempURL: URL? { directory?.appendingPathComponent("store.tmp") }
+
+  /// Accepts only an envelope `{ "format": "daymark-store", "keys": { ... } }`.
+  private static func envelope(_ data: Data) -> [String: Any]? {
+    guard !data.isEmpty, let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+    guard object["format"] as? String == "daymark-store", object["keys"] is [String: Any] else { return nil }
+    return object
+  }
+
+  private static func validData(at url: URL?) -> Data? {
+    guard let url = url, let data = try? Data(contentsOf: url) else { return nil }
+    return envelope(data) == nil ? nil : data
+  }
+
+  static func readResponse() -> Data {
+    lock.lock()
+    defer { lock.unlock() }
+    var source = "empty"
+    var store: Data? = nil
+    var damaged = false
+    let mainExists = mainURL.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
+    if let data = validData(at: mainURL) {
+      source = "main"
+      store = data
+    } else {
+      if mainExists {
+        damaged = true
+        quarantineMain()
+      }
+      if let data = validData(at: backupURL) {
+        source = "backup"
+        store = data
+      }
+    }
+    var body = Data("{\"ok\":true,\"source\":\"\(source)\",\"damaged\":\(damaged ? "true" : "false"),\"store\":".utf8)
+    body.append(store ?? Data("null".utf8))
+    body.append(Data("}".utf8))
+    return body
+  }
+
+  /// One copy per calendar day, the first state seen that day, kept for a week.
+  /// Protects against a copy that is valid JSON but semantically broken replacing `.bak`.
+  private static func keepDailySnapshot(_ previous: Data) {
+    guard let dir = directory else { return }
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    let stamp = formatter.string(from: Date())
+    let target = dir.appendingPathComponent("store.day-\(stamp).json")
+    if !FileManager.default.fileExists(atPath: target.path) {
+      try? previous.write(to: target, options: [.atomic])
+    }
+    guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return }
+    let daily = names.filter { $0.hasPrefix("store.day-") }.sorted()
+    if daily.count > 7 {
+      for name in daily.prefix(daily.count - 7) {
+        try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+      }
+    }
+  }
+
+  private static func quarantineMain() {
+    guard let main = mainURL, let dir = directory else { return }
+    let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+    let target = dir.appendingPathComponent("store.damaged-\(stamp).json")
+    try? FileManager.default.moveItem(at: main, to: target)
+  }
+
+  static func write(_ data: Data) -> Bool {
+    guard envelope(data) != nil else { return false }
+    lock.lock()
+    defer { lock.unlock() }
+    guard let main = mainURL, let backup = backupURL, let temp = tempURL else { return false }
+    do {
+      try data.write(to: temp, options: [.atomic])
+      if let previous = validData(at: main) {
+        try previous.write(to: backup, options: [.atomic])
+        keepDailySnapshot(previous)
+      }
+      if rename(temp.path, main.path) != 0 {
+        _ = try? FileManager.default.replaceItemAt(main, withItemAt: temp)
+      }
+      return FileManager.default.fileExists(atPath: main.path)
+    } catch {
+      return false
+    }
+  }
+}
 
 private enum PhoneSteps {
   static let pedometer = CMPedometer()

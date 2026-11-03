@@ -65,9 +65,35 @@ $("modal").addEventListener("close", () => {
 function diaryHasMeals() {
   return Object.values(state.logs || {}).some(day => day && Array.isArray(day.meals) && day.meals.length);
 }
+/* No stored copy, or one that did not read: start empty. The stored key is never removed here;
+   a copy that failed to read stays under KEY + '.damaged' (see app.js). */
 if (state.demo) {
-  try { localStorage.removeItem(KEY); } catch (error) {}
   state = freshUser();
 }
 try { render(); } catch (error) {}
 if (state.needsSetup || (!state.startChoices && !diaryHasMeals())) openStartFlow();
+if (typeof storageDamaged !== "undefined" && storageDamaged) {
+  setTimeout(() => toast("Попередню копію даних не вдалося прочитати. Вона збережена окремо — у «Моєму просторі» її можна завантажити файлом."), 900);
+}
+if (window.DaymarkStore && window.DaymarkStore.mode === "native" && window.DaymarkStore.damaged) {
+  setTimeout(() => toast("Основний файл даних був пошкоджений. Відновлено останню цілу копію."), 1400);
+}
+
+/* The app stays open across midnight. When it comes back, "today" moves with the calendar
+   so new food is not written into yesterday. */
+let shellToday = today();
+function watchDay() {
+  const now = today();
+  if (now === shellToday) return;
+  const wasOnToday = selectedDate === shellToday;
+  shellToday = now;
+  if (wasOnToday) {
+    selectedDate = now;
+    monthView = now.slice(0, 7);
+    if (!$("modal").open) { try { render(); } catch (error) {} }
+  }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") watchDay(); });
+window.addEventListener("focus", watchDay);
+window.addEventListener("pageshow", watchDay);
+setInterval(watchDay, 60000);
