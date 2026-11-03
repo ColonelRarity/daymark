@@ -19,10 +19,11 @@ const DIARY_RECENT_LIMIT = 24;
 const DIARY_SYNONYMS = [
   ["помідор", "томат", "помидор", "помідори", "томати", "помидоры"],
   ["курка", "куряч", "курица", "куриц", "курин", "курят"],
-  ["сир кисломолочний", "творог", "кисломолочний сир", "сирок"],
+  ["сир кисломолочний", "творог", "кисломолочний сир"],
   ["сир", "сыр"],
   ["філадельфі", "филадельфи", "philadelphia", "філа"],
-  ["варен", "варён", "отварн", "відварн"],
+  ["варен", "варён", "отварн", "відварн", "відварен", "отварен"],
+  ["чипси", "чіпси", "чипсы", "chips"],
   ["смажен", "жарен", "жарк"],
   ["запечен", "запечён", "в духовці"],
   ["тушкован", "тушен", "тушён"],
@@ -133,28 +134,19 @@ function diaryKind(food) {
 }
 
 function diaryKindLabel(food) {
-  return { mine: "мій продукт", recipe: "рецепт Daymark", place: "заклад", dish: "готова страва", product: "продукт" }[diaryKind(food)];
+  const kind = diaryKind(food);
+  if (kind === "dish" && FoodSchema.prep(food) !== "dish") return "продукт"; // halva or kysil is a typical-recipe card, but not a "ready dish"
+  return { mine: "мій продукт", recipe: "рецепт Daymark", place: "заклад", dish: "готова страва", product: "продукт" }[kind];
 }
 
+/* Confidence and preparation come from the shared card schema (food-schema.js). */
 function diaryConfidence(food) {
-  switch (food.quality) {
-    case "user": return ["Мій продукт", "твої цифри", "high"];
-    case "common-product": return ["Середнє для продукту", "±10 %, спосіб приготування важливий", "mid"];
-    case "generic-estimate": return ["Типова рецептура", "діапазон, не дані кухні", "low"];
-    case "restaurant": return ["Дані закладу", "офіційне меню", "high"];
-    case "restaurant-estimate": return ["Вага закладу · оцінка ккал", "груба оцінка", "low"];
-    case "label-community": return ["Етикетка · Open Food Facts", "внесено спільнотою, звір пачку", "mid"];
-    case "recipe": return ["Рецепт Daymark", "сума інгредієнтів", "mid"];
-    default: return ["Довідник Ciqual 2025", "середнє довідкове", "mid"];
-  }
+  const c = FoodSchema.confidence(food);
+  return [c.label, c.note, c.level];
 }
 
 function diaryPrepState(food) {
-  const name = diaryNormalize(food.name + " " + (food.originalName || ""));
-  if (/сир(е|ий|а|і)\b|raw|сирого/.test(name)) return "у сирому вигляді";
-  if (/варен|смажен|запечен|тушкован|гриль|на пару|готов|cooked|boiled|fried|baked/.test(name)) return "у готовому вигляді";
-  if (diaryKind(food) === "dish" || diaryKind(food) === "place" || diaryKind(food) === "recipe") return "готова страва";
-  return "";
+  return { raw: "у сирому вигляді", cooked: "у готовому вигляді", dry: "у сухому вигляді", dish: "готова страва" }[FoodSchema.prep(food)] || "";
 }
 
 function diaryScore(food, query, groups) {
@@ -174,7 +166,7 @@ function diaryScore(food, query, groups) {
         else if (words.some(part => part.startsWith(word))) value = 450;
         else if (name.includes(word)) value = 200;
         if (index === 0 && value >= 600) value += 50;
-        if (word === group.strong[0] && value) value += 40; // the word the person actually typed beats its synonyms
+        if (word === group.strong[0] && value) value += 100; // the word the person actually typed beats its synonyms and the common-product bonus
         if (value > best) best = value;
       });
       if (!best) group.weak.forEach(word => { if (name.includes(word)) best = Math.max(best, words.some(part => part.startsWith(word)) ? 120 : 60); });
@@ -413,7 +405,7 @@ function diaryCard() {
   const servingWord = !item && food && food.serving && food.serving !== 100 ? (food.servingLabel || diaryServingWord(food)) : "";
   const presets = food && food.unit === "portion"
     ? [[0.5, "½ порції"], [1, "1 порція"], [2, "2 порції"]]
-    : [[Math.round(serving * 0.5), "½ · " + num(Math.round(serving * 0.5)) + " " + unit], [serving, (servingWord ? "1 " + servingWord : "1×") + " · " + num(serving) + " " + unit], [serving * 2, (servingWord ? "2 " + servingWord : "2×") + " · " + num(serving * 2) + " " + unit]];
+    : [[Math.round(serving * 0.5), "½ · " + num(Math.round(serving * 0.5)) + " " + unit], [serving, (servingWord ? "1 " + servingWord : "1×") + " · " + num(serving) + " " + unit], [serving * 2, (servingWord ? "2 " + diaryServingPlural(servingWord) : "2×") + " · " + num(serving * 2) + " " + unit]];
   const fat = item && item.fatAddon;
   const digits = conf[2] === "high" ? 1 : 0;
   return '<div class="diary-card"><button class="diary-back" data-action="diary-back">← Назад до пошуку</button>'
@@ -435,6 +427,17 @@ function diaryServingWord(food) {
   if (/^(банан|яблуко|груша|апельсин|мандарин|ківі|персик|слива|хурма|авокадо|огірок|помідор|картопля|морква|цибуля|перець)/.test(name) && !/сік|пюре|сушен/.test(name)) return "шт";
   if (/^(кава|еспресо|американо|капучино|лате|чай|какао)/.test(name)) return "чашка";
   return "";
+}
+
+/* "2 скибки", "2 чашки": the form after 2–4 for the serving words the cards use. */
+function diaryServingPlural(word) {
+  const fixed = { "шт": "шт", "столова ложка": "столові ложки", "чайна ложка": "чайні ложки", "шматочок": "шматочки", "огірок": "огірки", "скуп": "скупи", "шот": "шоти", "бублик": "бублики", "пряник": "пряники", "сирок": "сирки", "чебурек": "чебуреки", "дерун": "деруни", "млинець": "млинці" };
+  if (fixed[word]) return fixed[word];
+  if (/ка$/.test(word)) return word.replace(/ка$/, "ки");
+  if (/ця$/.test(word)) return word.replace(/ця$/, "ці");
+  if (/ія$/.test(word)) return word.replace(/ія$/, "ії");
+  if (/а$/.test(word)) return word.replace(/а$/, "и");
+  return word;
 }
 
 function diaryBaseOf(item) {
@@ -538,14 +541,20 @@ function diarySaveCustom(form) {
   state.customFoods = state.customFoods || [];
   if (state.customFoods.length >= 500) { toast("У власній базі вже 500 продуктів"); return; }
   const maybe = key => v[key] === "" || v[key] === undefined ? null : Number(v[key]);
-  const food = { id: "own-" + uid(), name, brand: String(v.brand || "").trim() || "Мій продукт", category: v.unit === "ml" ? "drinks" : "other", unit: v.unit === "ml" ? "ml" : "g", basis: 100, serving, kcal, p: maybe("p"), f: maybe("f"), c: maybe("c"), quality: "user", url: "", checked: today(), localized: true, emoji: v.unit === "ml" ? "🥤" : "◌" };
+  const food = FoodSchema.normalize({ id: "own-" + uid(), name, originalName: name, brand: String(v.brand || "").trim() || "Мій продукт", category: v.unit === "ml" ? "drinks" : "other", unit: v.unit === "ml" ? "ml" : "g", basis: 100, serving, kcal, p: maybe("p"), f: maybe("f"), c: maybe("c"), quality: "user", status: "checked", url: "", checked: today(), localized: true, emoji: v.unit === "ml" ? "🥤" : "◌" });
+  const check = FoodSchema.validate(food);
+  if (!check.ok) {
+    const reason = check.errors.some(e => e.startsWith("kcal")) ? "Калорій на 100 г не буває більше за 900." : check.errors.includes("macros>100g") ? "Білки, жири й вуглеводи разом не можуть перевищувати 100 г." : "Перевір цифри: білки, жири й вуглеводи — від 0 до 100 г на 100 г.";
+    toast(reason);
+    return;
+  }
   state.customFoods.push(food);
   persist();
   diary.food = food;
   diary.item = null;
   diary.view = "card";
   diaryPaint();
-  toast("Продукт у твоїй базі. Вкажи порцію.");
+  toast(check.warnings.some(w => w.startsWith("atwater")) ? "Збережено. Ккал не сходяться з БЖВ — звір етикетку." : "Продукт у твоїй базі. Вкажи порцію.");
 }
 
 /* ---------- writing into the day ---------- */
@@ -758,8 +767,8 @@ if (typeof UI_PHRASES !== "undefined" && Array.isArray(UI_PHRASES)) UI_PHRASES.p
   ["Мій продукт", "My food"], ["твої цифри", "your numbers"], ["Середнє для продукту", "Average for this food"], ["±10 %, спосіб приготування важливий", "±10 %, cooking method matters"],
   ["Типова рецептура", "Typical recipe"], ["діапазон, не дані кухні", "a range, not the kitchen's data"], ["Дані закладу", "Venue data"], ["офіційне меню", "official menu"],
   ["Вага закладу · оцінка ккал", "Venue weight · kcal estimate"], ["груба оцінка", "rough estimate"], ["Етикетка · Open Food Facts", "Label · Open Food Facts"], ["внесено спільнотою, звір пачку", "community entry, check the pack"],
-  ["Рецепт Daymark", "Daymark recipe"], ["сума інгредієнтів", "sum of ingredients"], ["Довідник Ciqual 2025", "Ciqual 2025 reference"], ["середнє довідкове", "reference average"], ["Внесено вручну", "Entered by hand"],
-  ["у сирому вигляді", "raw"], ["у готовому вигляді", "cooked"], ["мілілітри", "millilitres"], ["грами", "grams"], ["порції", "portions"], ["штрихкод", "barcode"], ["Діапазон:", "Range:"], ["на 100 г", "per 100 g"], ["на 100 мл", "per 100 ml"],
+  ["Рецепт Daymark", "Daymark recipe"], ["сума інгредієнтів", "sum of ingredients"], ["Довідник Ciqual 2025", "Ciqual 2025 reference"], ["Довідник USDA", "USDA reference"], ["Довідкова таблиця", "Reference table"], ["середнє довідкове", "reference average"], ["Внесено вручну", "Entered by hand"],
+  ["у сирому вигляді", "raw"], ["у готовому вигляді", "cooked"], ["у сухому вигляді", "dry"], ["мілілітри", "millilitres"], ["грами", "grams"], ["порції", "portions"], ["штрихкод", "barcode"], ["Діапазон:", "Range:"], ["на 100 г", "per 100 g"], ["на 100 мл", "per 100 ml"],
   ["Скільки, мл", "How much, ml"], ["Скільки, г", "How much, g"], ["Скільки, порц.", "How many portions"], ["½ порції", "½ portion"], ["1 порція", "1 portion"], ["2 порції", "2 portions"],
   ["На 100 г", "Per 100 g"], ["На 100 мл", "Per 100 ml"], ["Твоя порція", "Your portion"], ["олія", "oil"],
   ["Олія або масло зверху", "Oil or butter on top"], ["Лише те, що не враховано в продукті. У смаженому зі словом «смажене» олія вже всередині.", "Only what the food does not already include. Anything named “fried” already has the oil inside."],
