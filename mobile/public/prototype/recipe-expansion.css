@@ -1,0 +1,6 @@
+.recipe-art-expanded{background-color:#f6eee3;image-rendering:auto}
+.recipe-detail-image .recipe-art-legacy{width:min(100%,315px);margin-inline:auto;border-radius:18px}
+.recipe-detail-image:has(.recipe-art-legacy){background:#f4eee4;border-radius:22px}
+.recipe-detail-image .recipe-art-expanded{width:100%;max-width:418px;margin-inline:auto;border-radius:18px}
+.recipe-tab{white-space:nowrap}
+.recipe-categories{scroll-padding-inline:18px}

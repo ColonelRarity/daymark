@@ -67,7 +67,7 @@ export default function RecipesScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.kicker}><Text style={styles.dot}>● </Text>100 ІДЕЙ / ВИБИРАЙ ПІД СЕБЕ</Text>
+      <Text style={styles.kicker}><Text style={styles.dot}>● </Text>{recipes.length} ІДЕЙ / ВИБИРАЙ ПІД СЕБЕ</Text>
       <Text style={styles.pageTitle}>Що приготуємо сьогодні?</Text>
       <Pressable style={styles.shop} onPress={() => router.push("/recipe/cart")}>
         <Glyph name="basket" size={18} color={theme.ink} />
@@ -86,7 +86,7 @@ export default function RecipesScreen() {
           <Image resizeMode="cover" source={{ uri: "/art/dishes/breakfast-1.png" }} style={styles.plateImage} />
         </View>
         <View style={styles.numberWrap}>
-          <Text style={styles.number}>100</Text>
+          <Text style={styles.number}>{recipes.length}</Text>
           <Text style={styles.numberSub}>варіантів для{"\n"}твого ритму</Text>
         </View>
       </View>

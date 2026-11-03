@@ -1,6 +1,7 @@
 import { router, type Href } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import recipes from "@/src/data/recipes.json";
 import { num, sleepHours } from "@/src/format";
 import { useStore } from "@/src/store";
 import { theme } from "@/src/theme";
@@ -10,7 +11,7 @@ export default function SpacesScreen() {
   const sleep = sleepHours(day.bed, day.wake);
   const cards: { href: Href; bg: string; color: string; kicker: string; title: string; value: string; sub: string }[] = [
     { href: "/profile", bg: "#E4F2C9", color: "#536436", kicker: "ПРОСТІР / МОЇ ОПОРИ", title: "Мої опори.", value: "Мій\nнабір", sub: "Маленькі дії під мою ціль." },
-    { href: "/recipes", bg: "#FFE1CF", color: "#171A1C", kicker: "ПРОСТІР / ІДЕЇ ЇЖІ", title: "Ідеї їжі.", value: "100\nідей", sub: "Що приготувати сьогодні?" },
+    { href: "/recipes", bg: "#FFE1CF", color: "#171A1C", kicker: "ПРОСТІР / ІДЕЇ ЇЖІ", title: "Ідеї їжі.", value: `${recipes.length}\nідей`, sub: "Що приготувати сьогодні?" },
     { href: "/", bg: "#4E48F7", color: "#FFFFFF", kicker: "ПРОСТІР / МІЙ ДЕНЬ", title: "Мій день.", value: state.goalTitle, sub: "Позначка за позначкою." },
     { href: "/diary", bg: "#FFC6AD", color: "#171A1C", kicker: "ПРОСТІР / ЇЖА", title: "Їжа.", value: `${num(totals.kcal)}\nккал`, sub: "Внесено у щоденник." },
     { href: "/move", bg: "#D9FF65", color: "#171A1C", kicker: "ПРОСТІР / РУХ", title: "Рух.", value: num(day.steps), sub: "Кроків у своєму темпі." },

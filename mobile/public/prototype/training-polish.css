@@ -1,0 +1,52 @@
+/* A workout is a sequence of clear, tappable cards, not one grey slab. */
+#modal .training-exercise-list{display:grid;gap:10px;background:transparent;margin:18px 0 24px;padding:0}
+#modal .training-exercise-list>button{display:grid;grid-template-columns:42px minmax(0,1fr) auto 20px;gap:12px;align-items:center;min-height:80px;padding:13px 14px;border:1px solid #e1e5da;border-radius:19px;background:#fff;color:#262a38;box-shadow:0 5px 15px #303a4110;transition:transform .18s,box-shadow .18s}
+#modal .training-exercise-list>button:nth-child(4n+1){background:#f2fbdc;border-color:#d8eab1}
+#modal .training-exercise-list>button:nth-child(4n+2){background:#f0ecff;border-color:#ded5fb}
+#modal .training-exercise-list>button:nth-child(4n+3){background:#fff0e5;border-color:#f4d8c5}
+#modal .training-exercise-list>button:hover{transform:translateY(-2px);box-shadow:0 9px 20px #303a4120}
+#modal .training-exercise-list>button>span{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:#292b47;color:#e1fb8b;font-size:15px;font-weight:900}
+#modal .training-exercise-list strong{min-width:0;font-size:16px;line-height:1.2;letter-spacing:-.25px}
+#modal .training-exercise-list strong small{color:#68715f;font-size:12px;line-height:1.3;margin-top:5px}
+#modal .training-exercise-list b{font-size:14px;white-space:nowrap;color:#35384d}
+#modal .training-exercise-list i{font-size:19px;color:#5049e9}
+#modal .training-exercise-list>button:focus-visible,.workout-sound button:focus-visible,.workout-sound summary:focus-visible{outline:3px solid #514cf0;outline-offset:3px}
+
+/* The figure and the primary action occupy separate rows at every viewport. */
+#modal.training-show-dialog .show-shell{min-height:100dvh;padding-bottom:max(26px,env(safe-area-inset-bottom))}
+#modal.training-show-dialog .show-stage{flex:0 0 auto;min-height:0}
+#modal.training-show-dialog .show-stage.warm .show-number{background:linear-gradient(125deg,#dafe93,#cbf28a);box-shadow:0 7px 0 #8cb85929}
+#modal.training-show-dialog .show-stage.warm .motion-demo,
+#modal.training-show-dialog .show-stage.cool .motion-demo{flex:none;height:260px;margin:14px 0 0}
+#modal.training-show-dialog .show-stage.warm .show-continue,
+#modal.training-show-dialog .show-stage.cool .show-continue{flex:none;position:relative;z-index:1;margin-top:18px}
+#modal.training-show-dialog .show-stage.exercise .show-continue,
+#modal.training-show-dialog .show-stage.rest .show-continue{margin-top:18px}
+#modal.training-show-dialog .show-continue{background:linear-gradient(110deg,#5147ef,#6958f9);box-shadow:0 7px 0 #3027ab32,0 12px 22px #4236d52a}
+#modal.training-show-dialog .show-pause{background:transparent;margin-top:16px;padding:13px}
+#modal.training-show-dialog .show-stage .motion-demo{min-width:0}
+
+.workout-sound{margin:16px 0 0;border:1px solid #d9d3fa;border-radius:18px;background:#f0ecff;color:#292849;box-shadow:0 4px 12px #4a40a512}
+.workout-sound summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:54px;padding:10px 14px;font-size:14px;font-weight:850}
+.workout-sound summary::-webkit-details-marker{display:none}
+.workout-sound .sound-icon{display:grid;place-items:center;width:33px;height:33px;flex:none;border-radius:11px;background:#534be9;color:#fff;font-size:19px}
+.workout-sound .sound-status{margin-left:auto;color:#62598d;font-size:11px;font-weight:750;text-align:right}
+.workout-sound summary:after{content:'⌄';font-size:19px;color:#5148cb}
+.workout-sound[open] summary:after{transform:rotate(180deg)}
+.workout-sound-body{padding:0 14px 14px}
+.workout-sound-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.workout-sound-actions button{min-height:48px;border:1px solid #d6cff5;border-radius:13px;background:#fff;color:#35315e;font-size:13px;font-weight:850;padding:8px}
+.workout-sound-actions button.active{background:#302d55;border-color:#302d55;color:#fff}
+.workout-sound-modes{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;font-weight:800}
+.workout-sound-modes select{min-height:38px;flex:1;min-width:0;padding:6px 10px;border:1px solid #d6cff5;border-radius:10px;background:#fff;color:#302d55;font:inherit}
+.workout-sound-volume{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12px;font-weight:800}
+.workout-sound-volume input{flex:1;accent-color:#514cf0}
+.workout-sound-note{margin:11px 0 0;color:#605b72;font-size:11px;line-height:1.4}
+@media(max-width:500px){
+ #modal .training-exercise-list>button{grid-template-columns:40px minmax(0,1fr) auto 18px;gap:8px;padding:12px;min-height:78px}
+ #modal .training-exercise-list strong{font-size:15px}
+ #modal .training-exercise-list b{font-size:13px}
+ #modal.training-show-dialog .show-stage.warm .motion-demo,#modal.training-show-dialog .show-stage.cool .motion-demo{height:250px}
+ #modal.training-show-dialog .show-shell{padding:14px 16px max(28px,env(safe-area-inset-bottom))}
+}
+@media(max-width:360px){.workout-sound-actions{grid-template-columns:1fr}#modal .training-exercise-list b{font-size:12px}}

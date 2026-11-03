@@ -1,0 +1,19 @@
+/* Subject-specific stickers, with depth but without repeating a generic star. */
+.home-cover{min-height:176px}
+.home-cover-art{width:146px;min-height:138px}
+.home-cover-orbit{width:126px;height:126px;right:5px;top:1px;border-radius:38px;box-shadow:11px 13px 0 #8782d6,20px 22px 0 #ffffff24}
+.home-cover-star{width:116px;height:116px;right:10px;top:5px;display:grid;place-items:center;transform:rotate(0);filter:drop-shadow(4px 6px 1px #34306750)}
+.home-cover-star img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 0 #fff8)}
+.home-cover-art small{right:12px;bottom:-2px}
+.app-home .energy-spark{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:25px;background:linear-gradient(145deg,#fffdf6,#ffe0d4);box-shadow:0 5px 0 #d5907c,0 10px 20px #895c5a27;transform:rotate(8deg)}
+.builder-stamp{width:62px;height:62px;flex:none;border-radius:18px;display:grid;place-items:center;font-size:35px;background:#e8f1ce;box-shadow:5px 6px 0 #b6a5e9;transform:rotate(-8deg)}
+.training-route-mark{font-size:58px;filter:drop-shadow(4px 6px 0 #7165ae60);transform:rotate(8deg)}
+.training-studio-v2 .training-route-mark{opacity:1}
+.training-cover-sticker,.training-stamp{font-family:inherit}
+.flow-orb{font-size:76px;box-shadow:8px 9px 0 #a59ce8,0 19px 35px #27274a27}
+.flow-finish-star{font-size:86px;filter:drop-shadow(0 11px 7px #4d58e938)}
+.voice-spark.spark-one{right:4px;top:12px;font-size:30px;filter:drop-shadow(3px 5px 0 #533d6940);transform:rotate(13deg)}
+.vp-mark .victory-icon{font-weight:1000;color:inherit}
+@media(max-width:600px){.app-home .energy-spark{width:38px;height:38px;font-size:22px}.builder-stamp{width:54px;height:54px;font-size:29px}}
+@media(max-width:400px){.home-cover{min-height:164px;padding-right:15px}.home-cover-art{width:123px;min-height:126px}.home-cover-orbit{width:110px;height:110px;right:3px;top:1px;border-radius:34px;box-shadow:9px 11px 0 #8782d6,16px 18px 0 #ffffff24}.home-cover-star{width:105px;height:105px;right:6px;top:4px}.home-cover-art small{right:4px;bottom:-1px}}
+@media(max-width:360px){.home-cover-art{width:104px;min-height:116px}.home-cover-orbit{width:94px;height:94px;right:3px;top:2px;border-radius:29px}.home-cover-star{width:91px;height:91px;right:5px;top:3px}.home-cover-art small{font-size:7px;right:1px}}

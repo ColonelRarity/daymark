@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import recipes from "@/src/data/recipes.json";
 import { num } from "@/src/format";
 import { useStore, type Meal } from "@/src/store";
 import { theme } from "@/src/theme";
@@ -46,7 +47,7 @@ export default function DiaryScreen() {
       </View>
       <Pressable style={styles.recipeLink} onPress={() => router.push("/recipes")}>
         <Text style={styles.recipeMark}>✳ Не знаєш, що поїсти?</Text>
-        <Text style={styles.recipeTitle}>100 ідей під твій настрій ↗</Text>
+        <Text style={styles.recipeTitle}>{recipes.length} ідей під твій настрій ↗</Text>
       </Pressable>
       <View style={styles.tools}>
         <Pressable style={styles.toolFeatured} onPress={() => router.push("/photo")}>

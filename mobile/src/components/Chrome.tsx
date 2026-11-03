@@ -12,7 +12,7 @@ export function AppHeader() {
       </Text>
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" accessibilityLabel="Помічник дня" onPress={() => router.push("/coach")} style={styles.notice}>
-          <Text style={styles.noticeMark}>✦</Text>
+          <Text style={styles.noticeMark}>◎</Text>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>1</Text>
           </View>

@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.daymark.ios",
+      "bundleIdentifier": "app.daymark.bezruk",
       "usesAppleSignIn": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Камера потрібна, щоб сфотографувати страву. Знімок лишається на цьому пристрої.",
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F4F5F0",
+        "backgroundColor": "#1E0F5D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -38,7 +38,11 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#F4F5F0"
+          "backgroundColor": "#1F0955",
+          "dark": {
+            "image": "./assets/images/splash-icon.png",
+            "backgroundColor": "#1F0955"
+          }
         }
       ],
       "expo-web-browser",

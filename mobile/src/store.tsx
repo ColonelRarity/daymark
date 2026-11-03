@@ -156,7 +156,7 @@ function makeDemo(): State {
     calories: 2100,
     diet: "balanced",
     weight: null,
-    goalTitle: "Сильніша версія себе",
+    goalTitle: "Підтримувати форму",
     goalStart: start,
     goalEnd: addMonthsISO(start, 4),
     stepsTarget: 8000,

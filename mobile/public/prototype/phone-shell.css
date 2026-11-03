@@ -1,0 +1,96 @@
+/* Phone chrome: keep the interface below the status bar and stop pinch-zoom. */
+html, body { touch-action: manipulation; }
+.app-shell {
+  box-sizing: border-box;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+}
+.demo-banner { display: none !important; }
+
+dialog {
+  padding-top: calc(14px + env(safe-area-inset-top)) !important;
+}
+#modal.training-player-dialog,
+#modal.training-show-dialog {
+  padding-top: env(safe-area-inset-top) !important;
+}
+#modal .modal-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 48px;
+  padding-top: 4px;
+  background: inherit;
+}
+#closeModal {
+  position: relative;
+  z-index: 31;
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.recipe-card,
+.recipe-open,
+.recipe-art,
+.recipe-art-expanded,
+.recipe-art-legacy,
+.home-plate,
+.recipe-detail-image {
+  overflow: hidden !important;
+}
+.recipe-art,
+.recipe-art-expanded,
+.recipe-art-legacy {
+  position: relative;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+.recipe-open .recipe-art {
+  width: 100%;
+  height: auto !important;
+  aspect-ratio: 4 / 3 !important;
+  flex: none;
+}
+.recipe-detail-image .recipe-art {
+  width: 100%;
+  max-height: 320px;
+  aspect-ratio: 1 !important;
+  height: auto !important;
+}
+.recipe-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  pointer-events: none;
+}
+
+.catalog-item .food-visual {
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  line-height: 1;
+  background: #f6eddc;
+}
+.catalog-results {
+  max-height: min(52dvh, 460px);
+  overflow: auto;
+}
+#offResults {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  position: static;
+}
+#offResults .filter-note {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  background: #f4f1e6;
+  border-radius: 12px;
+  color: #5c564c;
+}
