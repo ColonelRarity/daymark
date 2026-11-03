@@ -1,0 +1,93 @@
+/* «Мій план» and the reworked first entry. Builds on start-flow.css. */
+.start-kicker small { display: block; font-weight: 600; letter-spacing: 0; text-transform: none; color: #6f6d84; font-size: 11px; margin-top: 2px; }
+.start-pills.small .start-pill { font-size: 12px; padding: 6px 9px; min-height: 32px; }
+.start-check { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 13px; font-weight: 700; color: #2f2f48; }
+.start-check input { width: 20px; height: 20px; accent-color: #5144e8; flex: none; }
+.start-exclude-list { border: 1px solid #e2e1e9; border-radius: 14px; background: #fff; overflow: hidden; }
+.start-exclude { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #f0eff5; }
+.start-exclude:last-child { border-bottom: 0; }
+.start-exclude.on { background: #fbf8e6; }
+.start-exclude span { font-size: 12px; font-weight: 750; color: #2f2f48; }
+.start-exclude div { display: flex; gap: 4px; }
+.start-exclude button { border: 1px solid #dcdbe4; background: #fff; border-radius: 8px; font-size: 10px; font-weight: 800; padding: 5px 6px; color: #4a4a62; min-height: 28px; }
+.start-exclude button.active { background: #262641; color: #fff; border-color: #262641; }
+.start-later { width: auto !important; background: transparent !important; color: #6a6294 !important; box-shadow: none !important; min-height: 32px !important; font-size: 12px !important; font-weight: 700 !important; margin-bottom: 4px; }
+.start-health summary { color: #6a4f1a; }
+
+.mp-block { margin: 14px 0; }
+.mp-block > h3 { font-size: 15px; margin: 0 0 6px; color: #262641; letter-spacing: -.2px; }
+.mp-lead, .mp-fine { font-size: 12px; line-height: 1.45; color: #545568; margin: 4px 0 8px; }
+.mp-fine { font-size: 11px; color: #6d6c80; }
+.plan-why { margin: 8px 0; border: 1px solid #e2e1e9; border-radius: 14px; background: #fff; padding: 0 12px; }
+.plan-why summary { list-style: none; cursor: pointer; padding: 11px 0; font-size: 13px; font-weight: 800; color: #4439a4; }
+.plan-why summary::-webkit-details-marker { display: none; }
+.plan-why p { font-size: 12px; line-height: 1.45; color: #3f3f58; margin: 0 0 10px; }
+.mp-today { background: #262641; color: #fff; border-radius: 20px; padding: 14px 16px; margin: 12px 0; }
+.mp-today span { font-size: 10px; letter-spacing: 1.2px; font-weight: 900; color: #ddfa82; }
+.mp-today ul { list-style: none; margin: 8px 0; padding: 0; }
+.mp-today li { font-size: 13px; padding: 4px 0; border-bottom: 1px solid #ffffff22; }
+.mp-today li small { color: #c9c6ea; font-size: 11px; display: block; }
+.mp-today li b { color: #ddfa82; }
+.mp-today p { font-size: 12px; margin: 8px 0 0; color: #f1efff; line-height: 1.4; }
+.mp-today .mp-fine { color: #c9c6ea; }
+.mp-day { border: 1px solid #e2e1e9; border-radius: 16px; background: #fff; margin: 8px 0; overflow: hidden; }
+.mp-day summary { list-style: none; cursor: pointer; padding: 11px 13px; display: grid; gap: 2px; }
+.mp-day summary::-webkit-details-marker { display: none; }
+.mp-day summary span { font-size: 10px; letter-spacing: 1px; font-weight: 900; color: #6a6294; }
+.mp-day summary strong { font-size: 14px; color: #262641; }
+.mp-day summary em { font-style: normal; font-size: 12px; color: #4f6b2a; font-weight: 700; }
+.mp-day[open] summary { background: #f5f4ff; }
+.mp-day-body { padding: 4px 13px 10px; }
+.mp-meal { padding: 9px 0; border-top: 1px solid #f0eff5; }
+.mp-meal-head small { display: block; font-size: 10px; letter-spacing: .8px; font-weight: 900; color: #6a6294; }
+.mp-meal-head strong { display: block; font-size: 14px; color: #262641; margin: 2px 0; }
+.mp-meal-head em { display: block; font-style: normal; font-size: 12px; color: #4d4e63; }
+.mp-meal-head span { display: block; font-size: 11px; color: #5a7a2c; margin-top: 3px; }
+.mp-meal-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.mp-meal-actions button, .mp-session button { border: 1px solid #d9d8e2; background: #fff; border-radius: 9px; font-size: 11px; font-weight: 800; padding: 6px 8px; color: #35335d; min-height: 30px; }
+.mp-day-sum { font-size: 12px; font-weight: 700; color: #35335d; margin: 8px 0 0; }
+.mp-session { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid #e2e1e9; border-radius: 14px; background: #fff; padding: 10px 12px; margin: 8px 0; }
+.mp-session small { display: block; font-size: 10px; letter-spacing: .8px; font-weight: 900; color: #6a6294; }
+.mp-session strong { display: block; font-size: 14px; color: #262641; }
+.mp-session em { display: block; font-style: normal; font-size: 12px; color: #4d4e63; }
+.mp-session span { display: block; font-size: 11px; color: #5a7a2c; margin-top: 3px; }
+.mp-reasons { margin: 0; padding-left: 18px; }
+.mp-reasons li { font-size: 13px; line-height: 1.45; color: #2f2f48; margin: 6px 0; }
+.mp-short { border: 1px solid #f0dca8; background: #fff8e6; border-radius: 14px; padding: 10px 12px; margin: 8px 0; }
+.mp-short b { font-size: 13px; color: #4a3a0a; }
+.mp-short p { font-size: 12px; margin: 6px 0; color: #5a4a1a; }
+.mp-short .start-pill i { font-style: normal; color: #6a5b16; font-weight: 700; }
+.mp-wide { width: 100%; border: 1px solid #d9d8e2; background: #fff; border-radius: 13px; min-height: 44px; font-weight: 900; font-size: 14px; color: #262641; margin: 8px 0; }
+.mp-wide.primary { background: #5144e8; color: #fff; border-color: #5144e8; }
+.mp-alert { background: #fff1d8; border: 1px solid #f0d5a0; border-radius: 16px; padding: 12px 14px; margin: 8px 0 12px; font-size: 13px; color: #4a3a0a; line-height: 1.4; }
+.mp-alert button { display: block; margin-top: 8px; border: 0; background: #262641; color: #fff; border-radius: 11px; min-height: 40px; padding: 0 14px; font-weight: 900; }
+.mp-edit { border: 1.5px solid #5144e8; border-radius: 16px; background: #fff; padding: 12px; margin-top: 10px; }
+.mp-edit > b { display: block; font-size: 14px; margin-bottom: 6px; color: #262641; }
+.mp-edit-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.mp-edit-actions button { flex: 1 1 140px; border: 1px solid #d9d8e2; background: #fff; border-radius: 11px; min-height: 42px; font-weight: 900; font-size: 13px; color: #262641; }
+.mp-edit-actions button.primary { background: #5144e8; color: #fff; border-color: #5144e8; }
+.mp-diff { margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: #eef6d4; }
+.mp-diff b { font-size: 13px; }
+.mp-diff ul { margin: 6px 0 0; padding-left: 18px; }
+.mp-diff li { font-size: 13px; line-height: 1.45; margin: 3px 0; }
+.mp-review { background: #f4f1cf; border-radius: 18px; padding: 12px 14px; }
+.mp-review p { font-size: 13px; line-height: 1.45; margin: 6px 0; color: #2f2f48; }
+.mp-history { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #ecebf2; }
+.mp-history small { display: block; font-size: 10px; letter-spacing: .8px; font-weight: 900; color: #6a6294; }
+.mp-history b { display: block; font-size: 13px; color: #262641; }
+.mp-history em { display: block; font-style: normal; font-size: 11px; color: #6d6c80; }
+.mp-history button { border: 1px solid #d9d8e2; background: #fff; border-radius: 9px; font-size: 11px; font-weight: 800; padding: 6px 9px; min-height: 30px; color: #35335d; }
+.mp-home { margin: 12px 0; padding: 14px; border-radius: 18px; background: #eef6d4; color: #243018; }
+.mp-home span { display: block; font-size: 10px; font-weight: 900; letter-spacing: 1px; }
+.mp-home ul { list-style: none; margin: 8px 0; padding: 0; }
+.mp-home li { font-size: 13px; padding: 3px 0; }
+.mp-home li i { font-style: normal; color: #4f6b2a; font-weight: 800; }
+.mp-home b { display: block; font-size: 14px; margin: 6px 0 10px; }
+.mp-home button { border: 0; background: #262641; color: #fff; border-radius: 12px; min-height: 40px; padding: 0 14px; font-weight: 900; }
+.mp-shop { margin-top: 8px; border: 1px solid #e2e1e9; border-radius: 14px; background: #fff; padding: 0 12px; }
+.mp-shop summary { list-style: none; cursor: pointer; padding: 11px 0; font-size: 13px; font-weight: 800; color: #262641; }
+.mp-shop summary::-webkit-details-marker { display: none; }
+.mp-shop ul { list-style: none; margin: 0; padding: 0 0 8px; }
+.mp-shop li { font-size: 13px; padding: 5px 0; border-top: 1px solid #f0eff5; display: flex; gap: 8px; align-items: baseline; }
+.mp-shop li small { font-size: 10px; font-weight: 800; letter-spacing: .4px; color: #6a6294; min-width: 72px; }
+.mp-shop li b { margin-left: auto; font-size: 12px; color: #2f2f48; }

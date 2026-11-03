@@ -1,10 +1,7 @@
-/* Daily plan from the person's goal, body, and deadline.
-   Mifflin–St Jeor for resting burn, then a pace that fits the date
-   without going past a gentle weekly change. Not a medical prescription. */
-
-function planWords(text) {
-  return String(text || "").toLocaleLowerCase("uk").split(/[,.;/]+/).map(item => item.trim()).filter(item => item.length >= 3).slice(0, 8);
-}
+/* Daily guide from the person's answers. The arithmetic lives in energy-calc.js (EnergyCalc)
+   and the week in plan-engine.js (PlanEngine); this file keeps the names the rest of the app
+   calls — dayEnergy, computeSmartPlan, applySmartPlan, plannedWorkout — and the compatibility
+   shape of state.dayPlan (version 7). Not a medical prescription. */
 
 function planNumber(value, min, max) {
   const number = Number(value);
@@ -16,309 +13,186 @@ function planRound(value) {
   return Math.round(value / 10) * 10;
 }
 
+/* The saved answers (startChoices v2), with the profile numbers on top: the profile is where a
+   weigh-in or a manual edit writes, so it wins over what was typed at the start. */
 function planInputFromState() {
-  const choices = state.startChoices || {};
+  const answers = PlanEngine.normalizeAnswers(state.startChoices || {});
   const profile = state.profile || {};
-  const activity = { seated: "seated", walks: "walks", light: "walks", train2: "train", train3: "train", mixed: "walks", train5: "active", physical: "active" };
-  const current = typeof goal === "function" ? goal() : { kind: "form", title: "", end: "" };
+  answers.body.name = profile.name || answers.body.name;
+  if (profile.age) answers.body.age = profile.age;
+  if (profile.height) answers.body.height = profile.height;
+  if (profile.weight) answers.body.weight = profile.weight;
+  if (profile.targetWeight !== undefined && profile.targetWeight !== "") answers.goal.targetWeight = profile.targetWeight;
+  if (profile.sex === "male" || profile.sex === "female") answers.body.sex = profile.sex;
+  const current = typeof goal === "function" ? goal() : null;
+  if (!answers.goal.deadline && current && validDate(current.end) && current.end > today()) answers.goal.deadline = current.end;
+  return answers;
+}
+
+function planActivityCompat(key) {
+  return { sitting: "seated", light: "walks", onfeet: "walks", physical: "active", heavy: "active" }[key] || "seated";
+}
+
+function planSessionsCompat(move) {
+  if (!move || !Array.isArray(move.sessions)) return [];
+  return move.sessions.map(session => ({ name: session.name, detail: session.minutes + " хв · " + session.weekdayName, days: [session.weekday], id: session.id, date: session.date, minutes: session.minutes, kind: session.kind }));
+}
+
+/* Movement for the compat plan: the active "my plan" week if there is one, otherwise a fresh
+   week from the same answers, so the home screen never shows sessions nobody chose. */
+function planMovement(answers, energy, override) {
+  const mine = override || (state.myPlan && state.myPlan.status === "active" && state.myPlan.move);
+  const move = mine || PlanEngine.buildMove(answers, energy, today());
+  const kinds = move.sessions.map(s => s.kind);
+  const likes = !kinds.length ? "mixed" : kinds.every(k => k === "walk") ? "walking" : kinds.every(k => k === "strength") ? "strength" : kinds.every(k => k === "cardio") ? "cardio" : "mixed";
+  const places = move.sessions.map(s => s.place);
+  const place = places.includes("gym") ? "gym" : places.includes("home") ? "home" : places.length ? "outdoor" : answers.move.like.includes("gym") ? "gym" : answers.move.like.includes("walk") && !answers.move.like.includes("home") ? "outdoor" : "home";
   return {
-    name: profile.name || "",
-    age: profile.age,
-    height: profile.height,
-    weight: profile.weight,
-    targetWeight: profile.targetWeight,
-    sex: profile.sex || choices.sex || "",
-    activity: choices.activity || activity[profile.activityLevel] || "seated",
-    goal: choices.goal || current.kind,
-    custom: choices.custom || "",
-    kind: current.kind,
-    title: current.title,
-    goalDate: choices.goalDate || current.end || "",
-    health: choices.health || "",
-    mode: choices.mode || (state.settings && state.settings.style === "keto" ? "keto" : state.settings && state.settings.fasting ? "fasting" : "balanced"),
-    prefs: Array.isArray(choices.prefs) ? choices.prefs : [],
-    meals: choices.meals || "",
-    workouts: choices.workouts || "",
-    wish: choices.wish || "",
-    avoid: choices.avoid || "",
-    workoutTime: choices.workoutTime || ""
+    sessions: planSessionsCompat(move),
+    steps: move.steps,
+    place,
+    likes,
+    frequency: move.sessions.length,
+    sessionMinutes: answers.move.minutes,
+    beginner: answers.move.gymExperience === "none" || answers.move.intensity === "easy",
+    prescribed: !!move.prescribed,
+    notes: move.notes || []
   };
 }
 
-function planPurpose(source) {
-  const id = source.custom && String(source.custom).trim() ? "custom" : (source.goal || source.kind || "form");
-  const map = {
-    lose: "lose", comfortable: "lose",
-    gain: "gain",
-    muscle: "muscle", stronger: "muscle",
-    shape: "recomp",
-    form: "maintain", maintain: "maintain", foodrhythm: "maintain", evening: "maintain", lesssugar: "maintain", water: "maintain",
-    sleep: "sleep", energy: "energy",
-    walking: "walk", stamina: "walk", regularmove: "walk",
-    homebody: "home", restart: "home",
-    firstmonth: "habit", consistency: "habit"
-  };
-  if (map[id]) return map[id];
-  const kind = source.kind || id;
-  const nutrition = (typeof GOAL_TEMPLATES !== "undefined" && GOAL_TEMPLATES[kind] && GOAL_TEMPLATES[kind].nutrition) || null;
-  if (nutrition === "lose") return "lose";
-  if (kind === "muscle") return "muscle";
-  if (nutrition === "gain") return "gain";
-  if (kind === "sleep") return "sleep";
-  if (kind === "walking") return "walk";
-  if (kind === "homefit") return "home";
-  return "maintain";
+function planTextFood(energy, answers) {
+  if (!energy || !energy.ok) return energy && energy.status === "care"
+    ? "Регулярні прийоми їжі без автоматичного дефіциту. Орієнтир калорій краще узгодити з фахівцем."
+    : "Поки без персональної калорійності. Меню показує порції, а не норму.";
+  const m = energy.macros;
+  const perMeal = planRound(energy.target / (PlanEngine.layoutFor(answers.food).slots.length || 3));
+  const head = energy.purpose === "lose" ? "У кожному прийомі білок і овочі, гарнір знайомий. Солодке можна, просто не замість обіду."
+    : energy.purpose === "muscle" || energy.purpose === "gain" ? "Не пропускай білок. Якщо до вечора калорій менше за орієнтир, додай перекус."
+    : "Звичні прийоми їжі навколо орієнтира. Нічого не заборонено, дивимось на день цілком.";
+  return head + " Білка близько " + m.p + " г (" + m.pPerKg + " г/кг). На прийом виходить близько " + num(perMeal) + " ккал.";
 }
 
-function planMovement(source, purpose, care, limits) {
-  const prefs = Array.isArray(source.prefs) ? source.prefs : [];
-  const gym = prefs.includes("gym");
-  const home = prefs.includes("home") || purpose === "home";
-  const walk = prefs.includes("walk") || purpose === "walk" || (!gym && !home);
-  const place = gym ? "gym" : home ? "home" : "outdoor";
-  const cap = { "Без тренувань": 0, "1–2 рази": 2, "3–4 рази": 4, "5+ разів": 5 };
-  const maxSessions = Object.prototype.hasOwnProperty.call(cap, source.workouts) ? cap[source.workouts] : null;
-  const easy = limits || source.health === "beginner";
-  let sessions = [];
-  if (care || maxSessions === 0 && purpose !== "lose" && purpose !== "walk") {
-    sessions = [];
-  } else if (limits) {
-    sessions = [{ name: "Коротка прогулянка", detail: "15–20 хв · 3 рази на тиждень", days: [2, 4, 6] }];
-  } else if (purpose === "muscle" || purpose === "gain") {
-    sessions = [{ name: gym ? "Силове в залі" : "Силове вдома", detail: (easy ? "25" : gym ? "45" : "30") + " хв · " + (easy ? "2" : "3") + " рази", days: easy ? [1, 4] : [1, 3, 5] }];
-    if (walk && maxSessions !== 2) sessions.push({ name: "Легка прогулянка", detail: "20 хв · у дні без силового", days: [2, 4, 6] });
-  } else if (purpose === "sleep") {
-    sessions = [{ name: "Спокійна прогулянка", detail: "15 хв · не пізно ввечері", days: [1, 3, 5] }];
-  } else if (purpose === "walk") {
-    sessions = [{ name: "Прогулянка", detail: (easy ? "25" : "35") + " хв · 5 разів", days: [1, 2, 3, 4, 5] }];
-  } else if (purpose === "energy") {
-    sessions = [{ name: "Ранкова прогулянка", detail: "20 хв · 4 рази", days: [1, 2, 4, 5] }, { name: home || !gym ? "Коротке силове" : "Силове", detail: "20 хв · 2 рази", days: [3, 6] }];
-  } else {
-    const strength = { name: gym ? "Силове в залі" : "Силове вдома", detail: (easy ? "20" : "30") + " хв · " + (easy ? "2" : "3") + " рази", days: [1, 3, 5] };
-    const stroll = { name: "Прогулянка", detail: (easy ? "20" : "35") + " хв · 4 рази", days: [1, 2, 4, 6] };
-    if (maxSessions === 0) sessions = [stroll];
-    else if (gym && !walk) sessions = [strength];
-    else if (purpose === "lose") sessions = walk && !gym ? [stroll, strength] : [strength, stroll];
-    else sessions = [strength, stroll];
-  }
-  if (maxSessions !== null && maxSessions > 0) {
-    let budget = maxSessions;
-    const fitted = [];
-    for (const item of sessions) {
-      if (budget <= 0) break;
-      const days = item.days.slice(0, budget);
-      budget -= days.length;
-      const times = days.length === 1 ? "1 раз" : days.length < 5 ? days.length + " рази" : days.length + " разів";
-      fitted.push(Object.assign({}, item, { days, detail: item.detail.replace(/\d+\s*раз(?:и|ів)?/, times) }));
-    }
-    sessions = fitted;
-  }
-  const steps = care ? null : purpose === "walk" ? 10000 : purpose === "sleep" || limits ? 6000 : purpose === "muscle" || purpose === "gain" ? 7000 : source.activity === "active" ? 10000 : source.activity === "walks" ? 9000 : 8000;
-  const likes = purpose === "walk" || purpose === "sleep" ? "walking" : purpose === "muscle" || purpose === "gain" ? "strength" : "mixed";
-  const counted = sessions.reduce((sum, item) => sum + item.days.length, 0);
-  const frequency = maxSessions ? Math.max(2, Math.min(5, counted || 2)) : Math.max(2, Math.min(5, counted > 4 ? 4 : 3));
-  return { sessions, steps, place, likes, frequency, sessionMinutes: easy ? 20 : 30, beginner: !!easy };
+function planTextMove(move, energy) {
+  if (!move.sessions.length) return energy && energy.status === "care" ? "Тренування автоматично не призначаємо. Рух — лише той, який тобі вже дозволений." : "Окремі тренування не ставимо. Кроки можна додавати, коли зручно.";
+  const names = [...new Set(move.sessions.map(s => s.name))];
+  return move.sessions.length + " " + (move.sessions.length === 1 ? "заняття" : move.sessions.length < 5 ? "заняття" : "занять") + " на тиждень: " + names.slice(0, 3).join(", ") + (names.length > 3 ? " та інші" : "") + "." + (move.steps ? " Кроків на день близько " + num(move.steps) + "." : "");
 }
 
-function computeSmartPlan(source) {
-  const src = source || planInputFromState();
-  let purpose = planPurpose(src);
-  const care = src.health === "pregnancy" || src.health === "medical";
-  const limits = src.health === "limits";
-  const age = planNumber(src.age, 18, 80);
-  const height = planNumber(src.height, 130, 220);
-  const weight = planNumber(src.weight, 35, 250);
-  const targetWeight = planNumber(src.targetWeight, 35, 250);
-  const sex = src.sex === "male" || src.sex === "female" ? src.sex : "";
-  const pal = { seated: 1.2, walks: 1.375, train: 1.55, active: 1.725 }[src.activity] || 1.3;
-  let move = planMovement(src, purpose, care, limits);
-  const meals = planNumber(src.meals, 2, 5);
-  const wishWords = planWords(src.wish);
-  const avoidWords = planWords(src.avoid);
-  const lessSugar = (src.prefs || []).includes("sugar") || src.goal === "lesssugar" || purpose === "lose";
-  const mode = care ? "balanced" : (src.mode || "balanced");
+function planTextPace(energy) {
+  if (!energy || !energy.ok) return "Темп ваги застосунок не рахує.";
+  const pace = energy.pace || {};
+  if (energy.purpose === "lose" && energy.rateKg) return "Плановий темп близько " + num(energy.rateKg, 1) + " кг на тиждень" + (pace.estimateWeeks ? ". При такому темпі вийшло б близько " + pace.estimateWeeks + " тиж. — це не обіцянка ваги на дату" : "") + (pace.note ? " " + pace.note : "");
+  if (energy.purpose === "gain" || energy.purpose === "muscle") return "Невеликий плюс до підтримання" + (energy.rateKg ? " · близько " + num(energy.rateKg, 2) + " кг на тиждень" : "") + (pace.note ? " " + pace.note : "");
+  return "Вагу не женемо. Орієнтир тримає звичайний день." + (pace.note ? " " + pace.note : "");
+}
+
+/* The compat plan (state.dayPlan). `source` may be v2 answers, old v1 choices, or nothing. */
+function computeSmartPlan(source, options) {
+  const answers = source && source.v === 2 ? PlanEngine.normalizeAnswers(source) : source ? PlanEngine.normalizeAnswers(source) : planInputFromState();
+  let energy = EnergyCalc.estimate(PlanEngine.energyInput(answers, today()));
+  const adjust = answers.meta && answers.meta.adjust && Number(answers.meta.adjust.kcal);
+  if (adjust) energy = EnergyCalc.withAdjustment(energy, adjust, answers.meta.adjust.reason);
+  const move = planMovement(answers, energy, options && options.move);
+  const layout = PlanEngine.layoutFor(answers.food);
+  const care = energy.status === "care";
   const base = {
-    purpose, care, limits, mode, meals: meals || 3, wishWords, avoidWords, lessSugar,
-    sessions: move.sessions, steps: move.steps, place: move.place, likes: move.likes,
-    frequency: move.frequency, sessionMinutes: move.sessionMinutes, beginner: move.beginner,
-    activity: src.activity || "seated", title: src.title || "", manual: false, stretched: false
-  };
-  if (care) {
-    return Object.assign(base, {
-      calories: null, maintenance: null, p: null, f: null, c: null, weeklyKg: null, endDate: "",
-      missing: "",
-      food: "Регулярні прийоми їжі без автоматичного дефіциту чи кето. Орієнтир калорій краще узгодити з фахівцем.",
-      move: "Тренування автоматично не призначаємо. Рух — лише той, який тобі вже дозволений.",
-      pace: "Строк цілі лишається твоїм. Темп ваги застосунок не рахує.",
-      note: "Вагітність, годування або лікувальне харчування: цифру на день не ставимо. Щоденник можна вести як є."
-    });
-  }
-  if (!age || !height || !weight) {
-    return Object.assign(base, {
-      calories: null, maintenance: null, p: null, f: null, c: null, weeklyKg: null, endDate: "",
-      missing: "Додай вік, зріст і вагу — і з’явиться цифра на день.",
-      food: "Поки без персональної калорійності. Ідеї страв уже підлаштовані під ціль.",
-      move: move.sessions.length ? move.sessions.map(item => item.name + " · " + item.detail).join(". ") + "." : "Рух у зручному темпі, без обов’язкової норми.",
-      pace: "Строк можна задати, коли з’являться вага й дата.",
-      note: "Без віку, зросту й ваги формула не рахує обмін. Тренування й щоденник уже працюють."
-    });
-  }
-  if (sex !== "male" && sex !== "female") {
-    return Object.assign(base, {
-      calories: null, maintenance: null, p: null, f: null, c: null, weeklyKg: null, endDate: "",
-      missing: "Обери стать. Від неї залежить формула і те, як Daymark до тебе звертається.",
-      food: "Ідеї страв уже під ціль. Цифру на день поставимо після формули.",
-      move: move.sessions.length ? move.sessions.map(item => item.name + " · " + item.detail).join(". ") + "." : "Рух у зручному темпі.",
-      pace: "Строк можна лишити. Темп ваги порахуємо разом із формулою.",
-      note: "Жіноча і чоловіча формули різняться приблизно на 160 ккал обміну в спокої. Середину більше не підставляємо."
-    });
-  }
-  const bmr = sexValue => 10 * weight + 6.25 * height - 5 * age + (sexValue === "male" ? 5 : -161);
-  const resting = bmr(sex);
-  const maintenance = resting * pal;
-  const bmi = weight / (height / 100) ** 2;
-  let noteBits = [];
-  const gap = targetWeight ? targetWeight - weight : 0;
-  if (gap <= -1 && purpose !== "sleep" && bmi >= 18.5) purpose = "lose";
-  if (gap >= 1 && purpose !== "lose" && purpose !== "sleep") purpose = "gain";
-  if (purpose === "lose" && bmi < 18.5) {
-    purpose = "maintain";
-    noteBits.push("Для цієї ваги й зросту зниження калорій не пропонуємо. Орієнтир — підтримання.");
-  }
-  if (purpose === "lose" && targetWeight && gap >= -0.4) {
-    purpose = "maintain";
-    noteBits.push("Бажана вага не нижча за поточну, тож тримаємо підтримання.");
-  }
-  if ((purpose === "gain" || purpose === "muscle") && gap <= 0.4 && targetWeight && gap < 0) purpose = "recomp";
-  if (purpose !== base.purpose) {
-    move = planMovement(src, purpose, care, limits);
-    base.purpose = purpose;
-    base.sessions = move.sessions;
-    base.steps = move.steps;
-    base.place = move.place;
-    base.likes = move.likes;
-    base.frequency = move.frequency;
-    base.sessionMinutes = move.sessionMinutes;
-    base.beginner = move.beginner;
-  }
-  const todayIso = today();
-  const requested = validDate(src.goalDate) && src.goalDate > todayIso && diff(todayIso, src.goalDate) <= 730 ? src.goalDate : "";
-  let weekly = 0;
-  let endDate = requested;
-  let stretched = false;
-  const maxLose = Math.min(1, Math.max(0.4, Math.round(weight * 0.01 * 10) / 10));
-  const maxGain = purpose === "muscle" ? 0.25 : 0.3;
-  if (purpose === "lose" && gap < -0.4) {
-    const absGap = -gap;
-    if (requested) {
-      const asked = absGap / (diff(todayIso, requested) / 7);
-      if (asked > maxLose) {
-        weekly = maxLose;
-        endDate = offset(todayIso, Math.min(730, Math.ceil(absGap / weekly * 7)));
-        stretched = true;
-      } else weekly = asked;
-    } else {
-      weekly = Math.min(maxLose, 0.5);
-      endDate = offset(todayIso, Math.min(730, Math.max(28, Math.ceil(absGap / weekly * 7))));
-    }
-  } else if (purpose === "lose") {
-    weekly = Math.min(maxLose, 0.5);
-    if (!endDate) endDate = offset(todayIso, 84);
-    noteBits.push("Бажану вагу не вказано, тож темп близько 0,5 кг на тиждень.");
-  } else if ((purpose === "gain" || purpose === "muscle") && gap > 0.4) {
-    const asked = requested ? gap / (diff(todayIso, requested) / 7) : 0.25;
-    weekly = Math.min(maxGain, Math.max(0.1, asked));
-    if (requested && asked > maxGain) {
-      endDate = offset(todayIso, Math.min(730, Math.ceil(gap / weekly * 7)));
-      stretched = true;
-    } else if (!requested) endDate = offset(todayIso, Math.min(730, Math.ceil(gap / weekly * 7)));
-  } else if (purpose === "muscle" || purpose === "gain") weekly = purpose === "muscle" ? 0.15 : 0.25;
-  let delta = 0;
-  if (purpose === "lose") delta = -(weekly * 7700) / 7;
-  else if (purpose === "gain" || purpose === "muscle") delta = (weekly * 7700) / 7;
-  else if (purpose === "recomp") delta = gap < -0.4 ? -Math.min(250, maintenance * 0.08) : 120;
-  const floor = sex === "male" ? 1700 : sex === "female" ? 1500 : 1600;
-  let calories = maintenance + delta;
-  if (calories < floor && purpose === "lose") {
-    const allowed = maintenance - floor;
-    if (allowed > 80 && gap < -0.4) {
-      weekly = (allowed * 7) / 7700;
-      const absGap = -gap;
-      endDate = offset(todayIso, Math.min(730, Math.ceil(absGap / Math.max(weekly, 0.1) * 7)));
-      stretched = true;
-    }
-    calories = Math.max(calories, floor);
-  }
-  calories = planRound(Math.max(floor, Math.min(4500, calories)));
-  if (calories <= floor + 10 && purpose === "lose") noteBits.push("Нижче " + num(floor) + " ккал план не опускаємо.");
-  const proteinPerKg = purpose === "muscle" ? 1.8 : purpose === "lose" || purpose === "recomp" ? 1.6 : purpose === "gain" ? 1.6 : 1.4;
-  let protein = Math.round(weight * proteinPerKg);
-  let fat = Math.round(weight * (mode === "keto" ? 1.1 : 0.9));
-  let carbs = mode === "keto" ? 40 : Math.round((calories - protein * 4 - fat * 9) / 4);
-  if (mode !== "keto" && carbs < 80) {
-    fat = Math.max(Math.round(weight * 0.7), fat - 8);
-    carbs = Math.round((calories - protein * 4 - fat * 9) / 4);
-  }
-  if (carbs < 0) carbs = 0;
-  const food = mode === "keto"
-    ? "Вуглеводи близько 40 г. Основа — білок, овочі й жир. Хліб, каші та солодке рідше."
-    : purpose === "lose"
-      ? "У кожному прийомі білок і овочі, гарнір знайомий. Солодке можна, просто не замість обіду. Білка близько " + protein + " г."
-      : purpose === "muscle" || purpose === "gain"
-        ? "Не пропускай білок: близько " + protein + " г. Якщо до вечора калорій менше за орієнтир, додай перекус."
-        : purpose === "sleep"
-          ? "Вечеря спокійна і не впритул до сну. Калорії — на підтримання, без урізання."
-          : "Звичні прийоми їжі навколо орієнтира. Нічого не заборонено, дивимось на день цілком.";
-  const sugar = lessSugar ? " Солодкі ідеї опускаємо нижче в списку." : "";
-  const perMeal = meals ? " На прийом виходить близько " + num(planRound(calories / (meals || 3))) + " ккал." : "";
-  const pace = purpose === "lose" && weekly
-    ? "Близько " + num(weekly, 1) + " кг на тиждень" + (endDate ? " · до " + fdate(endDate, true) : "") + (stretched ? ". Запрошений строк був би надто швидким, тож дату розраховано за спокійним темпом." : ".")
-    : purpose === "gain" || purpose === "muscle"
-      ? "Невеликий плюс до підтримання" + (endDate ? " · до " + fdate(endDate, true) : "") + (stretched ? ". Темп набору обмежено, щоб не квапити вагу." : ".")
-      : "Вагу не женемо. Орієнтир тримає звичайний день" + (endDate ? " до " + fdate(endDate, true) : "") + ".";
-  const moveLine = move.sessions.length
-    ? move.sessions.map(item => item.name + " · " + item.detail).join(". ") + (src.workoutTime ? ". Зручний час: " + src.workoutTime + "." : ".")
-    : "Окремі тренування не ставимо. Кроки можна додавати, коли зручно.";
-  noteBits.push("Цифра виходить із різниці ваги і дати. Звичайний день уже включає обрану активність.");
-  noteBits.push("Сьогодні на головній цифра може зрости: від тренування в щоденнику, від кроків понад план або від активних ккал годинника. Менше руху порцію не зменшує.");
-  return Object.assign(base, {
     version: 7,
-    purpose, calories, maintenance: planRound(maintenance), p: protein, f: fat, c: carbs,
-    weeklyKg: weekly ? Math.round(weekly * 10) / 10 : null, endDate: endDate || "", stretched,
-    missing: "", perMeal: planRound(calories / (meals || 3)), food: food + sugar + perMeal, move: moveLine + (move.steps ? " Кроків на день близько " + num(move.steps) + "." : ""),
-    pace, note: noteBits.join(" ")
+    purpose: energy.purpose || "maintain",
+    care,
+    limits: answers.move.limits.length > 0 || answers.health.injury,
+    mode: answers.food.mode,
+    meals: layout.slots.length,
+    sessions: move.sessions,
+    steps: move.steps,
+    place: move.place,
+    likes: move.likes,
+    frequency: move.frequency,
+    sessionMinutes: move.sessionMinutes,
+    beginner: move.beginner,
+    activity: planActivityCompat(answers.body.dailyActivity),
+    pal: energy.pal || 1.4,
+    title: (state.goals && state.goals[0] && state.goals[0].title) || "",
+    manual: false,
+    stretched: !!(energy.pace && energy.pace.realistic === false),
+    energy,
+    rulesVersion: PlanEngine.RULES_VERSION,
+    energyVersion: EnergyCalc.VERSION
+  };
+  if (!energy.ok) {
+    return Object.assign(base, {
+      calories: null, maintenance: null, p: null, f: null, c: null, weeklyKg: null, endDate: "",
+      missing: energy.status === "missing" ? "Додай " + energy.missing.join(", ") + " — і з’явиться цифра на день." : "",
+      food: planTextFood(energy, answers),
+      move: planTextMove(move, energy),
+      pace: planTextPace(energy),
+      note: care ? "Персональної цифри немає: " + energy.careReason + ". Щоденник можна вести як є." : "Без віку, зросту, ваги й статі формула не рахує обмін. Тренування й щоденник уже працюють."
+    });
+  }
+  return Object.assign(base, {
+    calories: energy.target,
+    maintenance: energy.maintenance,
+    p: energy.macros.p, f: energy.macros.f, c: energy.macros.c,
+    weeklyKg: energy.rateKg || null,
+    endDate: energy.pace && energy.pace.deadline || "",
+    missing: "",
+    perMeal: planRound(energy.target / layout.slots.length),
+    food: planTextFood(energy, answers),
+    move: planTextMove(move, energy),
+    pace: planTextPace(energy),
+    note: energy.explanations.slice(0, 2).join(" ") + " Тренування додається лише в свій день: ≈ " + num(energy.trainingPerSession) + " ккал за заняття."
   });
 }
 
+/* The guide card: number, delta, macros, and why. Used on the plan screen and the start flow. */
 function smartPlanBody(plan) {
+  const energy = plan.energy || null;
   const delta = plan.maintenance && plan.calories ? plan.maintenance - plan.calories : 0;
   const deltaLine = plan.calories && plan.maintenance
-    ? '<p class="plan-delta">' + (delta > 0 ? "Підтримання ≈ " + num(plan.maintenance) + " · мінус " + num(delta) + " ккал" : delta < 0 ? "Підтримання ≈ " + num(plan.maintenance) + " · плюс " + num(-delta) + " ккал" : "Це підтримання, без зміни калорій") + "</p>"
+    ? '<p class="plan-delta">' + (delta > 0 ? "Підтримання ≈ " + num(plan.maintenance) + " · мінус " + num(delta) + " ккал" : delta < 0 ? "Підтримання ≈ " + num(plan.maintenance) + " · плюс " + num(-delta) + " ккал" : "Це підтримання, без зміни калорій") + (plan.manual ? " · цифру задано вручну" : "") + "</p>"
     : "";
+  const confidence = energy && energy.confidence ? { high: "впевненість висока", mid: "впевненість середня", low: "впевненість низька" }[energy.confidence] : "";
   const number = plan.calories
-    ? '<div class="plan-kcal"><small>ОРІЄНТИР НА ДЕНЬ</small><strong>' + num(plan.calories) + '</strong><span>ккал</span></div>' + deltaLine + '<div class="plan-macros"><b><i>Б</i>' + num(plan.p) + ' г</b><b><i>Ж</i>' + num(plan.f) + ' г</b><b><i>В</i>' + num(plan.c) + ' г</b></div>'
-    : '<div class="plan-kcal quiet"><small>ОРІЄНТИР НА ДЕНЬ</small><strong>—</strong><span>' + esc(plan.missing || "Без автоматичної цифри") + '</span></div>';
-  const rows = [["🥗", "Їжа", plan.food], ["🏃", "Рух", plan.move], ["📅", "Строк", plan.pace]].map(([icon, title, text]) => '<div class="start-row"><em>' + icon + '</em><div><b>' + title + '</b><p>' + esc(text) + '</p></div></div>').join("");
-  return number + rows + '<p class="start-note">' + esc(plan.note) + '</p>';
+    ? '<div class="plan-kcal"><small>ОРІЄНТИР НА ДЕНЬ' + (confidence ? ' · ' + confidence.toUpperCase() : '') + '</small><strong>' + num(plan.calories) + '</strong><span>ккал' + (energy && energy.range ? ' · коридор ' + num(energy.range.low) + '–' + num(energy.range.high) : '') + '</span></div>' + deltaLine + '<div class="plan-macros"><b><i>Б</i>' + num(plan.p) + ' г</b><b><i>Ж</i>' + num(plan.f) + ' г</b><b><i>В</i>' + num(plan.c) + ' г</b></div>'
+    : '<div class="plan-kcal quiet"><small>ОРІЄНТИР НА ДЕНЬ</small><strong>—</strong><span>' + esc(plan.missing || (energy && energy.careReason ? "Без автоматичної цифри: " + energy.careReason : "Без автоматичної цифри")) + '</span></div>';
+  const rows = [["🥗", "Їжа", plan.food], ["🏃", "Рух", plan.move], ["📅", "Темп", plan.pace]].map(([icon, title, text]) => '<div class="start-row"><em>' + icon + '</em><div><b>' + title + '</b><p>' + esc(text) + '</p></div></div>').join("");
+  const formula = energy && energy.ok
+    ? '<details class="plan-why"><summary>Звідки цифра? ↗</summary><p>Обмін у спокої за Mifflin–St Jeor (' + (energy.sex === "male" ? "чоловіча формула, +5" : "жіноча формула, −161") + '): ' + num(energy.resting) + ' ккал. Буденний рух ×' + String(energy.pal).replace(".", ",") + ' → підтримання ' + num(energy.maintenance) + '. ' + (energy.delta ? (energy.delta < 0 ? 'Мінус ' : 'Плюс ') + num(Math.abs(energy.delta)) + ' на ' + (energy.purpose === "lose" ? 'зниження' : 'набір') + '. ' : '') + (energy.floored ? 'Нижче ' + num(energy.floor) + ' не опускаємо. ' : '') + 'Б = ' + energy.macros.pPerKg + ' г/кг, Ж = ' + energy.macros.fPerKg + ' г/кг, В — решта. Це приклад розподілу, не припис.</p>' + (energy.assumptions.length ? '<p><b>Припущення:</b> ' + esc(energy.assumptions.join(" ")) + '</p>' : '') + (energy.warnings.length ? '<p><b>Увага:</b> ' + esc(energy.warnings.join(" ")) + '</p>' : '') + '<p>Версія правил: ' + esc(EnergyCalc.VERSION) + '. Перед релізом формули й коефіцієнти перевіряє дієтолог.</p></details>'
+    : "";
+  return number + rows + formula + '<p class="start-note">' + esc(plan.note) + '</p>';
 }
 
-function applyTrainingPrefs(plan) {
+/* Training preferences for the library and the training week, from the answers. */
+function applyTrainingPrefs(plan, answers) {
   if (typeof trainingPrefs === "undefined" || typeof TRAINING_PREF_KEY === "undefined") return;
-  const goals = { lose: "lose", gain: "strength", muscle: "muscle", recomp: "muscle", walk: "cardio", home: "start", sleep: "form", energy: "cardio", habit: "start", maintain: "maintain" };
+  const a = answers || planInputFromState();
+  const goals = { lose: "lose", gain: "strength", muscle: "muscle", recomp: "muscle", maintain: "maintain" };
   trainingPrefs.goal = goals[plan.purpose] || "maintain";
   trainingPrefs.place = plan.place === "gym" ? "gym" : plan.place === "outdoor" ? "outdoor" : "home";
-  trainingPrefs.gear = trainingPrefs.place === "gym" ? "machine" : "none";
+  trainingPrefs.gear = a.move.gear.includes("machine") && trainingPrefs.place === "gym" ? "machine" : a.move.gear.includes("dumbbell") ? "dumbbell" : a.move.gear.includes("band") ? "band" : "none";
+  if (trainingPrefs.place === "outdoor") trainingPrefs.gear = "none";
   trainingPrefs.level = plan.beginner ? "beginner" : "regular";
-  trainingPrefs.frequency = [2, 3, 4, 5].includes(plan.frequency) ? plan.frequency : 3;
+  trainingPrefs.frequency = [2, 3, 4, 5].includes(plan.frequency) ? plan.frequency : plan.frequency > 5 ? 5 : 2;
   trainingPrefs.time = [15, 20, 30, 45, 60].includes(plan.sessionMinutes) ? plan.sessionMinutes : 30;
   trainingPrefs.likes = ["mixed", "walking", "strength", "cardio"].includes(plan.likes) ? plan.likes : "mixed";
-  trainingPrefs.limitations = plan.care || plan.limits ? "medical" : "none";
+  trainingPrefs.limitations = plan.care || !plan.sessions.length ? "medical" : plan.limits ? "unsure" : "none";
   trainingPrefs.setup = true;
   try { localStorage.setItem(TRAINING_PREF_KEY, JSON.stringify(trainingPrefs)); } catch (error) {}
 }
 
+function planHistoryList() {
+  if (!Array.isArray(state.planHistory)) state.planHistory = [];
+  return state.planHistory;
+}
+
+function planHistoryAdd(entry) {
+  const list = planHistoryList();
+  list.unshift(Object.assign({ id: uid(), date: today() }, entry));
+  if (list.length > 60) list.length = 60;
+}
+
 function applySmartPlan(plan, options) {
   if (!plan) return;
+  const before = state.dayPlan && state.dayPlan.calories || null;
   state.dayPlan = plan;
   if (plan.calories) {
     state.settings.calories = plan.calories;
@@ -329,8 +203,7 @@ function applySmartPlan(plan, options) {
     state.settings.style = "balanced";
     state.settings.fasting = false;
   }
-  const current = state.goals && state.goals[0];
-  if (current && plan.stretched && validDate(plan.endDate) && plan.endDate >= current.start && diff(current.start, plan.endDate) <= 730) current.end = plan.endDate;
+  if (plan.calories !== before && (before || plan.calories)) planHistoryAdd({ kind: "energy", title: plan.calories ? "Орієнтир " + num(plan.calories) + " ккал" : "Без автоматичної цифри", from: before, to: plan.calories, maintenance: plan.maintenance, reason: options && options.reason || (options && options.fresh ? "перший розрахунок" : "перерахунок") });
   if (!options || options.fresh || typeof trainingPrefs === "undefined" || !trainingPrefs.setup) applyTrainingPrefs(plan);
 }
 
@@ -338,7 +211,8 @@ function planSessionToday(plan, iso) {
   if (!plan || !plan.sessions || !plan.sessions.length) return "";
   const day = dt(iso).getUTCDay();
   const match = plan.sessions.find(item => item.days && item.days.includes(day)) || plan.sessions[0];
-  return match.name + " · " + match.detail;
+  const rest = String(match.detail || "").replace(/^\d+\s*хв\s*·\s*/, "");
+  return /\d+\s*хв/.test(match.name) ? match.name + (rest ? " · " + rest : "") : match.name + " · " + match.detail;
 }
 
 function metFromWorkout(workout) {
@@ -385,7 +259,7 @@ function todayMoveAdjust(iso) {
   const entry = state.logs && state.logs[day] || { workouts: [], steps: 0 };
   const weight = planNumber(state.profile && state.profile.weight, 35, 250);
   const totals = typeof movementTotals === "function" ? movementTotals(day) : null;
-  const pal = { seated: 1.2, walks: 1.375, train: 1.55, active: 1.725 }[plan.activity] || 1.3;
+  const pal = Number(plan.pal) || { seated: 1.2, walks: 1.375, train: 1.55, active: 1.725 }[plan.activity] || 1.3;
   if (totals && totals.hasDayWatch && Number.isFinite(Number(totals.activeKcal)) && plan.maintenance) {
     const assumed = (plan.maintenance / pal) * (pal - 1.2);
     const above = Number(totals.activeKcal) - assumed;
@@ -420,7 +294,19 @@ function savedTrainingOn(iso) {
   }
 }
 
+function myPlanWorkoutOn(iso) {
+  const mine = state.myPlan;
+  if (!mine || mine.status !== "active" || !mine.move || !Array.isArray(mine.move.sessions)) return { known: false };
+  const start = mine.food && mine.food.start || mine.created;
+  if (!validDate(start) || start > iso || diff(start, iso) >= 7) return { known: false };
+  const session = mine.move.sessions.find(item => item.date === iso);
+  if (!session) return { known: true, workout: null };
+  return { known: true, workout: { name: session.name, minutes: Number(session.minutes) || 30, programId: session.id, kind: session.kind } };
+}
+
 function plannedWorkout(iso) {
+  const mine = myPlanWorkoutOn(iso);
+  if (mine.known) return mine.workout;
   const saved = savedTrainingOn(iso);
   if (saved.known) return saved.workout;
   const plan = state.dayPlan;
@@ -442,7 +328,8 @@ function plannedFoodExtra(iso) {
   if (!plan || plan.care || !session) return empty;
   if (typeof trainingPrefs !== "undefined" && trainingPrefs.limitations === "medical") return empty;
   const weight = planNumber(state.profile && state.profile.weight, 35, 250);
-  const extra = foodExtraFromBurn(workoutBurn(session, weight), plan.activity);
+  const perSession = plan.energy && plan.energy.ok && session.kind ? EnergyCalc.sessionKcal(weight || 70, session.minutes, session.kind) : 0;
+  const extra = perSession ? planRound(perSession) : foodExtraFromBurn(workoutBurn(session, weight), plan.activity);
   if (!extra) return empty;
   return { extra, note: "На цей день у плані є тренування (" + session.name + "). Їжа вже враховує його", confidence: "planned" };
 }
@@ -489,20 +376,27 @@ function latestWeightCheck() {
   return weightChecks().filter(item => item.kind === "check").slice().sort((a, b) => a.date < b.date ? 1 : -1)[0] || null;
 }
 
+function weighReminder() {
+  const saved = state.settings && state.settings.weighReminder;
+  return saved && typeof saved === "object" ? { enabled: !!saved.enabled, everyDays: [7, 14].includes(Number(saved.everyDays)) ? Number(saved.everyDays) : 7, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(saved.time || "") ? saved.time : "08:00" } : { enabled: false, everyDays: 7, time: "08:00" };
+}
+
 function weighInDue() {
   if (!state || state.demo || !state.profile) return false;
+  if (!weighReminder().enabled) return false;
   if (state.dayPlan && state.dayPlan.care) return false;
   if (!planNumber(state.profile.weight, 35, 250)) return false;
   rememberStartingWeight();
   const last = latestWeightCheck();
   const since = last ? last.date : ((state.goals && state.goals[0] && state.goals[0].start) || today());
-  return diff(since, today()) >= 7;
+  return diff(since, today()) >= weighReminder().everyDays;
 }
 
 function weighStatusLine() {
   const last = latestWeightCheck();
-  if (!last) return "Раз на тиждень Daymark просить зважитись. Нова вага оновлює той самий план, меню й ідеї їжі.";
-  const left = 7 - diff(last.date, today());
+  const reminder = weighReminder();
+  if (!last) return reminder.enabled ? "Раз на " + reminder.everyDays + " дн. Daymark нагадає зважитись. Нова вага оновлює той самий орієнтир." : "Нагадування про вагу вимкнене. Зважитись можна будь-коли — орієнтир оновиться від нової цифри.";
+  const left = reminder.everyDays - diff(last.date, today());
   return "Останнє зважування " + fdate(last.date, true) + " · " + num(last.kg, 1) + " кг. " + (left > 0 ? "Наступне через " + left + " дн." : "Можна зважитись знову.");
 }
 
@@ -516,8 +410,8 @@ function saveWeighIn(kg) {
   const before = Number(state.settings && state.settings.calories) || 0;
   weightChecks().push({ date: today(), kg, kind: "check" });
   state.profile.weight = String(kg);
-  state.startChoices = state.startChoices || {};
-  state.startChoices.weight = String(kg);
+  state.startChoices = PlanEngine.normalizeAnswers(state.startChoices || {});
+  state.startChoices.body.weight = String(kg);
   const bits = ["Вага " + num(kg, 1) + " кг записана."];
   if (previous) {
     const delta = Math.round((kg - previous) * 10) / 10;
@@ -526,7 +420,7 @@ function saveWeighIn(kg) {
   const target = planNumber(state.profile.targetWeight, 35, 250);
   if (target) bits.push("До бажаної ваги " + num(Math.abs(target - kg), 1) + " кг.");
   if (state.dayPlan && !state.dayPlan.manual && !state.dayPlan.care && (state.profile.sex === "male" || state.profile.sex === "female")) {
-    applySmartPlan(computeSmartPlan(planInputFromState()), { fresh: false });
+    applySmartPlan(computeSmartPlan(planInputFromState()), { fresh: false, reason: "нова вага " + num(kg, 1) + " кг" });
     const next = Number(state.settings.calories) || 0;
     bits.push(next && next !== before ? "Орієнтир тепер " + num(next) + " ккал." : "Денна цифра лишається " + num(next || before) + " ккал.");
   }
@@ -581,83 +475,21 @@ function recipeGoalScore(recipe, mealTarget) {
   let score = -Math.abs(estimate.kcal - meal) / 30;
   if (plan.purpose === "lose" || plan.purpose === "muscle" || plan.purpose === "recomp") score += estimate.p * 0.8 - estimate.kcal / 120;
   if (plan.purpose === "gain") score += Math.min(estimate.kcal, meal + 120) / 80;
-  if (plan.mode === "keto") score += estimate.c < 30 ? 30 : -estimate.c / 4;
-  if (plan.lessSugar && recipe.category === "dessert") score -= 70;
-  if (plan.purpose === "lose" && recipe.category === "dessert") score -= 20;
-  const title = recipe.title.toLocaleLowerCase("uk");
-  (plan.avoidWords || []).forEach(word => { if (title.includes(word)) score -= 120; });
-  (plan.wishWords || []).forEach(word => { if (title.includes(word)) score += 40; });
+  if (plan.mode === "lowcarb" || plan.mode === "keto") score += estimate.c < 30 ? 30 : -estimate.c / 4;
+  if (plan.purpose === "lose" && recipe.category === "dessert") score -= 60;
+  const answers = state.startChoices && state.startChoices.v === 2 ? state.startChoices : null;
+  if (answers) {
+    const slot = { breakfast: "breakfast", soup: "lunch", lunch: "lunch", salad: "lunch", dinner: "dinner", snack: "snack", dessert: "snack", drink: "snack" }[recipe.category] || "lunch";
+    const reject = PlanEngine.foodReject(recipe, answers, slot, new Set(["slot:" + slot]));
+    if (reject && reject.hard) score -= 500;
+    else if (reject) score -= 90;
+  }
   return score;
 }
 
 function openSmartPlan() {
-  const plan = state.dayPlan || computeSmartPlan(planInputFromState());
-  const profile = state.profile || {};
-  const goalDate = (state.startChoices && state.startChoices.goalDate) || (state.goals && state.goals[0] && state.goals[0].end) || "";
-  const html = '<div class="plan-page"><div class="plan-scroll"><div class="start-hero"><span>МІЙ ПЛАН · ПІД ЦІЛЬ</span><h3>' + esc((state.goals && state.goals[0] && state.goals[0].title) || "Мій ритм") + '</h3><p>Калорії виходять із ваги, яку хочеш змінити, і з дати. Можна поправити цифри внизу.</p></div>'
-    + smartPlanBody(plan)
-    + '<p class="start-note">' + esc(weighStatusLine()) + '</p><button type="button" class="text-btn" data-action="weigh-in">Зважитись</button>'
-    + '<form id="planTune" class="plan-tune"><div class="start-kicker">УТОЧНИТИ</div><div class="start-pills"><button type="button" class="start-pill' + (profile.sex === "female" ? " active" : "") + '" data-plan-sex="female">Жіноча формула</button><button type="button" class="start-pill' + (profile.sex === "male" ? " active" : "") + '" data-plan-sex="male">Чоловіча формула</button></div>'
-    + '<div class="start-two"><label class="start-field">Вік<input name="age" type="number" inputmode="numeric" min="18" max="80" value="' + esc(profile.age || "") + '"></label><label class="start-field">Зріст<input name="height" type="number" inputmode="decimal" min="130" max="220" value="' + esc(profile.height || "") + '"></label></div>'
-    + '<div class="start-two"><label class="start-field">Вага<input name="weight" type="number" inputmode="decimal" min="35" max="250" step="0.1" value="' + esc(profile.weight || "") + '"></label><label class="start-field">Бажана<input name="targetWeight" type="number" inputmode="decimal" min="35" max="250" step="0.1" value="' + esc(profile.targetWeight || "") + '"></label></div>'
-    + '<label class="start-field">Дата цілі<span class="plan-date-clip"><input name="goalDate" type="date" value="' + esc(goalDate) + '"></span></label>'
-    + '<label class="start-field">Своя цифра, ккал<input name="calories" type="number" inputmode="numeric" min="1000" max="5000" placeholder="Лише якщо не хочеш розрахунок" value=""></label></form></div>'
-    + '<div class="plan-dock"><button type="button" data-plan-recalc>Перерахувати мій план</button></div></div>';
-  openModal("МІЙ ПЛАН", html);
-  $("modal").classList.remove("start-flow");
-  $("modal").classList.add("plan-sheet");
-}
-
-function savePlanTune(form) {
-  try {
-    const data = Object.fromEntries(new FormData(form).entries());
-    state.startChoices = state.startChoices || {};
-    state.profile = state.profile || {};
-    if (state.profile.sex !== "male" && state.profile.sex !== "female") {
-      toast("Спочатку обери жіночу або чоловічу формулу.");
-      return;
-    }
-    ["age", "height", "weight"].forEach(key => {
-      if (data[key]) state.profile[key] = String(data[key]).trim();
-    });
-    if (data.targetWeight !== undefined) state.profile.targetWeight = String(data.targetWeight || "").trim();
-    if (data.goalDate && !validDate(data.goalDate)) {
-      toast("Дата не прочиталась. Обери її ще раз.");
-      return;
-    }
-    if (validDate(data.goalDate) && data.goalDate <= today()) {
-      toast("Дата цілі має бути попереду.");
-      return;
-    }
-    if (validDate(data.goalDate)) {
-      state.startChoices.goalDate = data.goalDate;
-      const current = state.goals && state.goals[0];
-      if (current && data.goalDate >= current.start && diff(current.start, data.goalDate) <= 730) current.end = data.goalDate;
-    }
-    const manual = planNumber(data.calories, 1000, 5000);
-    const plan = computeSmartPlan(planInputFromState());
-    if (manual) {
-      const scale = plan.calories ? manual / plan.calories : 1;
-      plan.calories = planRound(manual);
-      if (plan.p) {
-        plan.p = Math.round(plan.p * scale);
-        plan.f = Math.round(plan.f * scale);
-        plan.c = Math.round(plan.c * scale);
-      }
-      plan.manual = true;
-      plan.version = 7;
-      plan.note = "Цю цифру ти задав сам. Решта плану лишилась під ціль.";
-    }
-    applySmartPlan(plan, { fresh: false });
-    persist();
-    openSmartPlan();
-    try { render(); } catch (error) {}
-    const scroller = document.querySelector(".plan-scroll");
-    if (scroller) scroller.scrollTop = 0;
-    toast(plan.calories ? "Орієнтир оновлено: " + num(plan.calories) + " ккал." : "Без віку, зросту й ваги цифру не рахуємо.");
-  } catch (error) {
-    toast("Не вдалося перерахувати. Перевір цифри.");
-  }
+  if (typeof openMyPlan === "function") return openMyPlan();
+  openModal("МІЙ ПЛАН", smartPlanBody(state.dayPlan || computeSmartPlan(planInputFromState())));
 }
 
 function restoreSmartExtras() {
@@ -668,8 +500,12 @@ function restoreSmartExtras() {
     if (raw.startChoices && typeof raw.startChoices === "object") state.startChoices = raw.startChoices;
     if (raw.smartMeta && typeof raw.smartMeta === "object") state.smartMeta = raw.smartMeta;
     if (raw.dayPlan && typeof raw.dayPlan === "object" && (raw.dayPlan.calories || raw.dayPlan.care || raw.dayPlan.missing)) state.dayPlan = raw.dayPlan;
+    if (raw.myPlan && typeof raw.myPlan === "object" && raw.myPlan.version === 1) state.myPlan = raw.myPlan;
+    if (Array.isArray(raw.planHistory)) state.planHistory = raw.planHistory.slice(0, 60);
+    if (raw.settings && raw.settings.weighReminder && typeof raw.settings.weighReminder === "object") state.settings.weighReminder = raw.settings.weighReminder;
   } catch (error) {}
-  const stale = !state.dayPlan || (state.dayPlan.version !== 7 && !state.dayPlan.manual);
+  if (state.startChoices && state.startChoices.v !== 2) state.startChoices = PlanEngine.normalizeAnswers(state.startChoices);
+  const stale = !state.dayPlan || ((state.dayPlan.version !== 7 || !state.dayPlan.energyVersion) && !state.dayPlan.manual);
   if (stale && state.profile && state.profile.weight) {
     applySmartPlan(computeSmartPlan(planInputFromState()), { fresh: false });
     persist();
@@ -768,23 +604,6 @@ document.addEventListener("submit", event => {
   }
   saveWeighIn(kg);
 });;
-
-document.addEventListener("click", event => {
-  if (!$("modal").classList.contains("plan-sheet")) return;
-  const sex = event.target.closest("[data-plan-sex]");
-  if (sex) {
-    state.profile.sex = sex.dataset.planSex;
-    state.startChoices = state.startChoices || {};
-    state.startChoices.sex = state.profile.sex;
-    $("modal").querySelectorAll("[data-plan-sex]").forEach(button => button.classList.toggle("active", button === sex));
-    return;
-  }
-  const recalc = event.target.closest("[data-plan-recalc]");
-  if (!recalc) return;
-  event.preventDefault();
-  const form = document.getElementById("planTune");
-  if (form) savePlanTune(form);
-});
 
 document.addEventListener("submit", event => {
   if (!event.target || event.target.id !== "stepsForm") return;
