@@ -43,6 +43,7 @@ const trainingPlan=id=>TRAINING_PLANS.find(p=>p.id===id);
 const trainingStrength=p=>!['cardio','start'].includes(p.goal)&&p.id!=='reset';
 function trainingHistory(){return Object.entries(state.logs).flatMap(([date,l])=>(l.workouts||[]).filter(w=>w.programId).map(w=>({date,id:w.programId}))).sort((a,b)=>b.date.localeCompare(a.date));}
 function trainingScore(p,prefs){const reasons=[];let score=0;
+ if(prefs.limitations==='medical')return null;
  if(prefs.place!=='all'&&p.place!==prefs.place)return null;
  if(prefs.gear!=='all'&&p.gear!==prefs.gear)return null;
  const goalMatch=prefs.goal==='form'?['strength','cardio'].includes(p.goal):prefs.goal==='start'?p.goal==='start':p.goal===prefs.goal;

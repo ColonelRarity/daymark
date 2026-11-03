@@ -13,6 +13,7 @@ TRAINING_PLANS.push(
  {id:'gym-chest-shoulders-40',name:'Зал · груди й плечі',place:'gym',goal:'strength',gear:'machine',level:'all',minutes:40,tone:'lime',tag:'Верх тіла',items:[['chest','3 × 8–10'],['seatedpress','2 × 10'],['pecdeck','2 × 10'],['cabletriceps','2 × 12']]},
  {id:'gym-cycle-25',name:'Велотренажер · 25 хв',place:'gym',goal:'cardio',gear:'machine',level:'beginner',minutes:25,tone:'blue',tag:'Комфортне кардіо',items:[['bike','5 хв легко'],['bike','15 хв комфортно'],['bike','5 хв легко']]},
  {id:'out-walk-30',name:'Прогулянка · 30 хв',place:'outdoor',goal:'cardio',gear:'none',level:'beginner',minutes:30,tone:'lime',tag:'Свій темп',items:[['walk','5 хв легко'],['walk','20 хв комфортно'],['walk','5 хв легко']]},
+ {id:'out-walk-40',name:'Прогулянка · 40 хв',place:'outdoor',goal:'cardio',gear:'none',level:'all',minutes:40,tone:'lime',tag:'Рівний маршрут',items:[['walk','5 хв легко'],['walk','30 хв комфортно'],['walk','5 хв легко']]},
  {id:'out-walk-45',name:'Прогулянка · 45 хв',place:'outdoor',goal:'cardio',gear:'none',level:'all',minutes:45,tone:'peach',tag:'Довший маршрут',items:[['walk','5 хв легко'],['walk','35 хв комфортно'],['walk','5 хв легко']]},
  {id:'out-runwalk-30',name:'Біг + ходьба · 30 хв',place:'outdoor',goal:'cardio',gear:'none',level:'all',minutes:30,tone:'violet',tag:'Без поспіху',items:[['walk','5 хв легко'],['runwalk','5 × 2 хв легкої пробіжки + 2 хв ходьби'],['walk','5 хв легко']]}
 );
