@@ -65,7 +65,32 @@
 
 ### Етап 0 — збереження
 
-_Ще не почато._
+Коміт `cde9581` на гілці `work/product-stages`.
+
+**Змінені файли**
+
+- `mobile/ios/Daymark/PrototypeServer.swift` — новий маршрут `/store` (GET/PUT) і `LocalStore`: файл `Application Support/Daymark/store.json`, запис через тимчасовий файл і `rename`, попередня ціла копія в `store.bak`, перший за день знімок `store.day-YYYY-MM-DD.json` (тримаємо 7), пошкоджений основний файл переноситься в `store.damaged-<час>.json`, а читання повертає останню цілу копію.
+- `mobile/public/prototype/storage-bridge.js` (новий) — у нативному режимі всі ключі `daymark-*` живуть у пам’яті й скидаються у `/store` (debounce 180 мс, `sendBeacon`/синхронний XHR на `pagehide`/`beforeunload`); при першому запуску переносить дані з localStorage WebView; `window.DaymarkStore` з `exportAll`/`importAll`/`flush`.
+- `mobile/public/prototype/app.js` — завантаження без `removeItem`: неправильні дані не стирають диск, зберігаються під `daymark-concept-v1.damaged`; `validateState(data,{lenient:true})` відкидає окремі зіпсовані записи замість усього стану і проносить `startChoices`, `dayPlan`, `smartMeta`, `weekStudio`; експорт/відновлення охоплюють усі ключі (`backupBundle`, `restoreBackup`); панель «Мої дані» в профілі з реальним станом файлу; «Почати з чистого аркуша» зберігає копію `.before-reset`.
+- `mobile/public/prototype/phone-shell.js` — без `removeItem(KEY)`; демо не підміняє порожній стан; `watchDay()` переводить обрану дату на новий день після півночі/повернення з фону.
+- `mobile/public/prototype/start-flow.js` — повторний старт переносить щоденник, вагу, улюблене, власні продукти, рецепти й тиждень; нова ціль додається до списку, а не обнуляє його.
+- `mobile/public/prototype/weekly-studio.js` — обгортка `validateState` передає `options` далі.
+- `mobile/public/prototype/index.html` — підключено `storage-bridge.js` першим.
+- `mobile/scripts/prototype-server.mjs` (новий) — локальний сервер з тим самим `/store`, щоб перевіряти збереження у браузері.
+
+**Пройдено в браузері** (`node mobile/scripts/prototype-server.mjs`, `http://127.0.0.1:14711/index.html`)
+
+- Ім’я, ціль, орієнтир, сніданок із 3 продуктів, вага, тренування → файл `store.json` записаний; перезавантаження, повне закриття вкладки, наступний день (`watchDay`) — усе на місці, дата не стрибає, записи не подвоюються.
+- Обрізаний `store.json` → піднято `store.bak`, показано тост; `.damaged` копія лежить поруч.
+- Сміття під ключем `daymark-concept-v1` → чистий старт без демо-Алекса, стара копія під `.damaged`.
+- Повторне проходження старту не обнуляє щоденник і вагу.
+- Перенесення з localStorage WebView (`migratedFrom: webview-localstorage`).
+- Без мережі локальний файл читається (loopback-сервер у самому застосунку).
+
+**Ще не зроблено**
+
+- Перевірка на живому телефоні після збірки (xcodebuild Release запущено; результат у звіті етапу 1).
+- Фото в чернетках зберігаються як data URL у тому ж файлі — для великих альбомів треба окремі файли (етап 2+).
 
 ### Етап 1 — один щоденник
 
