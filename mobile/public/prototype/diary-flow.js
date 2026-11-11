@@ -649,6 +649,7 @@ function diaryDeleteItem() {
   if (!confirm("Видалити «" + item.name + "» з прийому?")) return;
   const entry = log(diary.date);
   entry.meals = entry.meals.filter(meal => meal.id !== item.id);
+  if (typeof forgetMeal === "function") forgetMeal(item.id);
   persist();
   diary.item = null;
   diary.view = "search";
@@ -793,3 +794,48 @@ if (typeof UI_PHRASES !== "undefined" && Array.isArray(UI_PHRASES)) UI_PHRASES.p
   vv.addEventListener("scroll", apply);
   apply();
 })();
+
+/* «Внести після їжі» writes the plan slot itself. Opening the recipe is the other button. */
+function commitPlannedMeal(date, recipeId, servings, slot) {
+  if (!validDate(date) || date > today()) { toast("Майбутній прийом ще не внесено."); return false; }
+  const recipe = typeof RECIPES !== "undefined" && RECIPES.find(item => item.id === recipeId);
+  if (!recipe || typeof recipeEstimate !== "function") return false;
+  const known = ["breakfast", "lunch", "dinner", "snack", "drink"];
+  const fromRecipe = recipe.category === "dessert" || recipe.category === "snack" ? "snack" : recipe.category === "drink" ? "drink" : recipe.category === "breakfast" ? "breakfast" : recipe.category === "dinner" ? "dinner" : "lunch";
+  const type = known.includes(slot) ? slot : fromRecipe;
+  const entry = log(date);
+  if (entry.meals.some(meal => meal.type === type && (meal.name === recipe.title || (meal.foodRef && meal.foodRef.id === "recipe-" + recipe.id)))) {
+    toast("Це вже є в прийомі «" + (TYPE_NAMES[type] || type) + "».");
+    return false;
+  }
+  if (entry.meals.length >= 300) { toast("У цьому дні вже 300 записів"); return false; }
+  const estimate = recipeEstimate(recipe, servings);
+  const grams = Math.max(1, Math.round(recipe.ingredients.reduce((sum, part) => sum + part.qty * (part.id === "egg" ? 50 : 1), 0) * servings));
+  const meal = {
+    id: uid(),
+    name: recipe.title,
+    type: type,
+    grams: grams,
+    unit: "g",
+    kcal: Math.round(estimate.kcal / 10) * 10,
+    p: Math.round(estimate.p),
+    f: Math.round(estimate.f),
+    c: Math.round(estimate.c),
+    source: "calculated",
+    emoji: "◌",
+    foodRef: { id: "recipe-" + recipe.id, quality: "recipe", originalName: recipe.title, unit: "g" }
+  };
+  entry.meals.push(meal);
+  (entry.habits = entry.habits || {}).food = true;
+  entry.nutritionComplete = false;
+  const ok = persist();
+  if (!ok) return false;
+  toast("Записано у «" + (TYPE_NAMES[type] || type) + "»: " + recipe.title);
+  try { render(); } catch (error) {}
+  return true;
+}
+
+actions["week-log"] = button => {
+  const servings = Number(button.dataset.servings);
+  commitPlannedMeal(button.dataset.date, button.dataset.id, Number.isFinite(servings) && servings > 0 ? servings : 1, button.dataset.slot || "");
+};

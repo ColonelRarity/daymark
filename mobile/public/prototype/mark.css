@@ -1,0 +1,21 @@
+.mark-card{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:#171a1c;color:#fff;border-radius:22px;padding:16px 16px;margin:0 0 16px}
+.mark-card b{display:block;font-size:18px;letter-spacing:-.4px}
+.mark-card small,.mark-card em{display:block;color:#c9cdd4;font-style:normal;font-size:13px;margin-top:3px}
+.mark-face{width:46px;height:46px;border-radius:16px;background:#d9fa72;color:#171a1c;display:grid;place-items:center;font-weight:800;flex-shrink:0}
+.mark-sheet{display:grid;gap:12px}
+.mark-log{display:grid;gap:8px;max-height:280px;overflow:auto}
+.mark-bubble{border-radius:16px;padding:10px 12px;font-size:15px;line-height:1.35}
+.mark-bubble.user{background:#eef1e6;justify-self:end;max-width:90%}
+.mark-bubble.mark{background:#171a1c;color:#fff;max-width:95%}
+.mark-compose{display:flex;gap:8px}
+.mark-compose input{flex:1;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit}
+.mark-mic,.mark-send{width:48px;height:48px;border-radius:16px;background:var(--blue);color:#fff;font-size:18px}
+.mark-mic.live{background:#d4533b}
+.mark-suggestions{display:grid;gap:8px}
+.mark-suggestions button{text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.mark-suggestions b{display:block}
+.mark-suggestions small{color:var(--muted)}
+.mark-key{display:grid;gap:8px}
+.mark-key input{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit}
+.account-card{display:grid;gap:10px;margin-bottom:14px}
+.account-card .account-actions{display:flex;gap:8px;flex-wrap:wrap}

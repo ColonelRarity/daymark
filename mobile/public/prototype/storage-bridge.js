@@ -43,6 +43,8 @@
   }
 
   const mem = new Map();
+  let revision = 0;
+  bridge.revision = 0;
 
   function collect() {
     if (!bridge.available) return webviewKeys();
@@ -52,7 +54,15 @@
   }
 
   function envelope(keys) {
-    return { format: FORMAT, schema: SCHEMA, savedAt: new Date().toISOString(), keys: keys };
+    return { format: FORMAT, schema: SCHEMA, revision: revision, savedAt: new Date().toISOString(), keys: keys };
+  }
+
+  function noteRevision(store) {
+    const next = Number(store && store.revision);
+    if (Number.isFinite(next) && next > revision) {
+      revision = next;
+      bridge.revision = revision;
+    }
   }
 
   bridge.exportAll = function () {
@@ -84,17 +94,24 @@
   let again = false;
 
   function flushNow() {
-    if (!bridge.available) return Promise.resolve(false);
+    if (!bridge.available || !bridge.dirty) return Promise.resolve(true);
     if (inFlight) { again = true; return Promise.resolve(false); }
     inFlight = true;
+    const sent = revision;
     const body = JSON.stringify(envelope(collect()));
     return fetch(STORE_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: body, keepalive: body.length < 60000 })
-      .then(response => {
+      .then(async response => {
+        if (response.status === 409) {
+          bridge.lastError = "stale";
+          bridge.dirty = true;
+          await absorbRemote();
+          return false;
+        }
         if (!response.ok) throw new Error("store " + response.status);
-        bridge.dirty = false;
+        if (sent === revision) bridge.dirty = false;
         bridge.flushedAt = Date.now();
         bridge.lastError = "";
-        return true;
+        return sent === revision;
       })
       .catch(error => {
         bridge.lastError = String(error && error.message || error);
@@ -104,7 +121,7 @@
       })
       .finally(() => {
         inFlight = false;
-        if (again) { again = false; schedule(); }
+        if (again || bridge.dirty) { again = false; schedule(); }
       });
   }
 
@@ -116,15 +133,46 @@
   }
 
   function flushBlocking() {
-    if (!bridge.available || !bridge.dirty) return;
+    if (!bridge.available || !bridge.dirty) return true;
     clearTimeout(timer);
+    const sent = revision;
     const body = JSON.stringify(envelope(collect()));
-    let done = false;
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", STORE_URL, false);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    try { xhr.send(body); } catch (error) {
+      bridge.lastError = String(error && error.message || error);
+      bridge.dirty = true;
+      return false;
+    }
+    if (xhr.status === 409) {
+      bridge.lastError = "stale";
+      bridge.dirty = true;
+      const remote = requestSync("GET");
+      if (remote && remote.store) {
+        noteRevision(remote.store);
+        if (typeof bridge.onStale === "function") bridge.onStale(remote.store);
+      }
+      return false;
+    }
+    if (xhr.status < 200 || xhr.status >= 300) {
+      bridge.lastError = "store " + xhr.status;
+      bridge.dirty = true;
+      return false;
+    }
+    if (sent === revision) bridge.dirty = false;
+    bridge.flushedAt = Date.now();
+    bridge.lastError = "";
+    return true;
+  }
+
+  async function absorbRemote() {
     try {
-      if (navigator.sendBeacon && body.length < 60000) done = navigator.sendBeacon(STORE_URL, new Blob([body], { type: "application/json" }));
+      const response = await fetch(STORE_URL, { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (payload && payload.store) noteRevision(payload.store);
     } catch (error) {}
-    if (!done) done = !!requestSync("PUT", body);
-    if (done) { bridge.dirty = false; bridge.flushedAt = Date.now(); }
   }
 
   bridge.flush = flushNow;
@@ -137,6 +185,8 @@
       mem.clear();
       for (const [key, value] of Object.entries(migrated.keys)) mem.set(key, value);
       mem.set(META_KEY, JSON.stringify({ schema: SCHEMA, restoredAt: new Date().toISOString() }));
+      revision += 1;
+      bridge.revision = revision;
       requestSync("PUT", JSON.stringify(envelope(collect())));
     } else {
       for (const key of Object.keys(webviewKeys())) raw.remove.call(localStorage, key);
@@ -161,11 +211,14 @@
   bridge.available = true;
   bridge.source = response.source || "none";
   bridge.damaged = !!response.damaged;
+  noteRevision(response.store);
   const migrated = migrate(response.store);
   if (migrated) {
     for (const [key, value] of Object.entries(migrated.keys)) mem.set(key, value);
     if (bridge.damaged) {
       mem.set(META_KEY, JSON.stringify({ schema: SCHEMA, recoveredFrom: bridge.source, at: new Date().toISOString() }));
+      revision += 1;
+      bridge.revision = revision;
       requestSync("PUT", JSON.stringify(envelope(collect())));
     }
   } else {
@@ -175,6 +228,8 @@
     for (const [key, value] of Object.entries(existing)) mem.set(key, value);
     const had = Object.keys(existing).length;
     mem.set(META_KEY, JSON.stringify({ schema: SCHEMA, migratedFrom: had ? "webview-localstorage" : "empty", at: new Date().toISOString() }));
+    revision += 1;
+    bridge.revision = revision;
     requestSync("PUT", JSON.stringify(envelope(collect())));
     bridge.source = had ? "migrated" : "fresh";
   }
@@ -183,12 +238,17 @@
     if (isOwn(this, key)) return mem.has(key) ? mem.get(key) : null;
     return raw.get.call(this, key);
   };
+  function bump() {
+    revision += 1;
+    bridge.revision = revision;
+    schedule();
+  }
   Storage.prototype.setItem = function (key, value) {
-    if (isOwn(this, key)) { mem.set(key, String(value)); schedule(); return; }
+    if (isOwn(this, key)) { mem.set(key, String(value)); bump(); return; }
     raw.set.call(this, key, value);
   };
   Storage.prototype.removeItem = function (key) {
-    if (isOwn(this, key)) { mem.delete(key); schedule(); return; }
+    if (isOwn(this, key)) { mem.delete(key); bump(); return; }
     raw.remove.call(this, key);
   };
 

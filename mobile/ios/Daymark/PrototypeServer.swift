@@ -114,11 +114,21 @@ enum PrototypeServer {
       case "GET":
         send(client, status: 200, body: LocalStore.readResponse(), type: "application/json; charset=utf-8")
       case "PUT", "POST":
-        let ok = LocalStore.write(request.body)
-        send(client, status: ok ? 200 : 422, body: Data((ok ? "{\"ok\":true}" : "{\"ok\":false,\"reason\":\"invalid\"}").utf8), type: "application/json; charset=utf-8")
+        switch LocalStore.write(request.body) {
+        case .saved(let revision):
+          send(client, status: 200, body: Data("{\"ok\":true,\"revision\":\(revision)}".utf8), type: "application/json; charset=utf-8")
+        case .stale(let revision):
+          send(client, status: 409, body: Data("{\"ok\":false,\"reason\":\"stale\",\"revision\":\(revision)}".utf8), type: "application/json; charset=utf-8")
+        case .invalid:
+          send(client, status: 422, body: Data("{\"ok\":false,\"reason\":\"invalid\"}".utf8), type: "application/json; charset=utf-8")
+        }
       default:
         send(client, status: 405, body: Data(), type: "text/plain")
       }
+      return
+    }
+    if let handled = DaymarkServices.response(for: request.method, path: requestPath, body: request.body) {
+      send(client, status: handled.status, body: handled.body, type: "application/json; charset=utf-8")
       return
     }
     guard request.method == "GET" else {
@@ -294,11 +304,25 @@ enum LocalStore {
     try? FileManager.default.moveItem(at: main, to: target)
   }
 
-  static func write(_ data: Data) -> Bool {
-    guard envelope(data) != nil else { return false }
+  enum WriteResult {
+    case saved(Int)
+    case stale(Int)
+    case invalid
+  }
+
+  private static func revision(of data: Data) -> Int {
+    guard let object = envelope(data), let number = object["revision"] as? NSNumber else { return 0 }
+    return number.intValue
+  }
+
+  static func write(_ data: Data) -> WriteResult {
+    guard envelope(data) != nil else { return .invalid }
     lock.lock()
     defer { lock.unlock() }
-    guard let main = mainURL, let backup = backupURL, let temp = tempURL else { return false }
+    guard let main = mainURL, let backup = backupURL, let temp = tempURL else { return .invalid }
+    let incoming = revision(of: data)
+    let current = validData(at: main).map(revision(of:)) ?? validData(at: backupURL).map(revision(of:)) ?? 0
+    if current > 0 && incoming <= current { return .stale(current) }
     do {
       try data.write(to: temp, options: [.atomic])
       if let previous = validData(at: main) {
@@ -308,9 +332,11 @@ enum LocalStore {
       if rename(temp.path, main.path) != 0 {
         _ = try? FileManager.default.replaceItemAt(main, withItemAt: temp)
       }
-      return FileManager.default.fileExists(atPath: main.path)
+      guard FileManager.default.fileExists(atPath: main.path) else { return .invalid }
+      AccountCloud.mirror(data)
+      return .saved(incoming)
     } catch {
-      return false
+      return .invalid
     }
   }
 }

@@ -14,8 +14,9 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C89DC070E3A77702F36D0F3E /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AD2C9F7CEF86E2CBFD8441 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F11748462D0307B40044C1D9 /* PrototypeServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748452D0307B40044C1D9 /* PrototypeServer.swift */; };
 		F11748442D0307B40044C1D9 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748432D0307B40044C1D9 /* SceneDelegate.swift */; };
+		F11748462D0307B40044C1D9 /* PrototypeServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748452D0307B40044C1D9 /* PrototypeServer.swift */; };
+		F117484B2D0307B40044C1D9 /* DaymarkServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F117484A2D0307B40044C1D9 /* DaymarkServices.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,9 +32,10 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		EDA9288B675C48B29F571FB4 /* libPods-Daymark.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Daymark.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Daymark/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748452D0307B40044C1D9 /* PrototypeServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrototypeServer.swift; path = Daymark/PrototypeServer.swift; sourceTree = "<group>"; };
 		F11748432D0307B40044C1D9 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = Daymark/SceneDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Daymark-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Daymark-Bridging-Header.h"; path = "Daymark/Daymark-Bridging-Header.h"; sourceTree = "<group>"; };
+		F11748452D0307B40044C1D9 /* PrototypeServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PrototypeServer.swift; path = Daymark/PrototypeServer.swift; sourceTree = "<group>"; };
+		F117484A2D0307B40044C1D9 /* DaymarkServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DaymarkServices.swift; path = Daymark/DaymarkServices.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +55,7 @@
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748452D0307B40044C1D9 /* PrototypeServer.swift */,
+				F117484A2D0307B40044C1D9 /* DaymarkServices.swift */,
 				F11748432D0307B40044C1D9 /* SceneDelegate.swift */,
 				F11748442D0722820044C1D9 /* Daymark-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
@@ -210,21 +213,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		A1C0FFEE1471100000000001 /* Copy prototype into app */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Copy prototype into app";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nSRC=\"${SRCROOT}/../public/prototype\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/prototype\"\nrm -rf \"$DEST\"\nditto --norsrc \"$SRC\" \"$DEST\"\nxattr -cr \"$DEST\"\n";
-		};
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -328,6 +316,21 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Daymark/Pods-Daymark-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		A1C0FFEE1471100000000001 /* Copy prototype into app */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy prototype into app";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nSRC=\"${SRCROOT}/../public/prototype\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/prototype\"\nrm -rf \"$DEST\"\nditto --norsrc \"$SRC\" \"$DEST\"\nxattr -cr \"$DEST\"\n";
+		};
 		CB0DB9C7EF6205F33F587668 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -360,6 +363,7 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				F11748462D0307B40044C1D9 /* PrototypeServer.swift in Sources */,
+				F117484B2D0307B40044C1D9 /* DaymarkServices.swift in Sources */,
 				F11748442D0307B40044C1D9 /* SceneDelegate.swift in Sources */,
 				C89DC070E3A77702F36D0F3E /* ExpoModulesProvider.swift in Sources */,
 			);

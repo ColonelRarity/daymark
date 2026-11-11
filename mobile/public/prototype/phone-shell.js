@@ -67,9 +67,10 @@ function diaryHasMeals() {
 }
 /* No stored copy, or one that did not read: start empty. The stored key is never removed here;
    a copy that failed to read stays under KEY + '.damaged' (see app.js). */
-if (state.demo) {
+if (state.demo && !hasRealMeals(state) && !state.startChoices && !state.myPlan && !(typeof storageDamaged !== "undefined" && storageDamaged)) {
   state = freshUser();
 }
+if (typeof restoreKeptMeals === "function") restoreKeptMeals();
 try { render(); } catch (error) {}
 if (state.needsSetup || (!state.startChoices && !diaryHasMeals())) openStartFlow();
 if (typeof storageDamaged !== "undefined" && storageDamaged) {

@@ -314,7 +314,7 @@ function finishStart() {
   };
   finishingSetup = true;
   /* A repeated start changes the goal and the plan. It never drops what the person already logged. */
-  const previous = state && !state.demo ? state : null;
+  const previous = state && (!state.demo || (typeof hasRealMeals === "function" && hasRealMeals(state))) ? state : null;
   const keepGoals = previous && Array.isArray(previous.goals) ? previous.goals.filter(item => item && item.id !== "setup" && item.id !== goal.id) : [];
   const carried = previous ? {
     logs: previous.logs && typeof previous.logs === "object" ? previous.logs : {},

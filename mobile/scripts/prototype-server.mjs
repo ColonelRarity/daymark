@@ -46,7 +46,12 @@ function readResponse() {
   return Buffer.concat([Buffer.from(`{"ok":true,"source":"${source}","damaged":${damaged},"store":`), store || Buffer.from("null"), Buffer.from("}")]);
 }
 function write(buffer) {
-  if (!envelope(buffer)) return false;
+  const object = envelope(buffer);
+  if (!object) return { status: 422, body: '{"ok":false,"reason":"invalid"}' };
+  const incoming = Number(object.revision) || 0;
+  const currentData = validData(mainFile) || validData(backupFile);
+  const current = currentData ? (Number(envelope(currentData).revision) || 0) : 0;
+  if (current > 0 && incoming <= current) return { status: 409, body: JSON.stringify({ ok: false, reason: "stale", revision: current }) };
   fs.writeFileSync(tempFile, buffer);
   const previous = validData(mainFile);
   if (previous) {
@@ -54,7 +59,7 @@ function write(buffer) {
     keepDailySnapshot(previous);
   }
   fs.renameSync(tempFile, mainFile);
-  return true;
+  return { status: 200, body: JSON.stringify({ ok: true, revision: incoming }) };
 }
 function keepDailySnapshot(previous) {
   const stamp = new Date().toISOString().slice(0, 10);
@@ -72,9 +77,9 @@ http.createServer((request, response) => {
       const chunks = [];
       request.on("data", chunk => chunks.push(chunk));
       request.on("end", () => {
-        const ok = write(Buffer.concat(chunks));
-        response.writeHead(ok ? 200 : 422, { "Content-Type": "application/json; charset=utf-8" });
-        response.end(ok ? '{"ok":true}' : '{"ok":false,"reason":"invalid"}');
+        const result = write(Buffer.concat(chunks));
+        response.writeHead(result.status, { "Content-Type": "application/json; charset=utf-8" });
+        response.end(result.body);
       });
       return;
     }
