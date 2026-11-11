@@ -262,7 +262,8 @@ function diaryDaySummary() {
 
 function diaryWaterPanel() {
   const entry = log(selectedDate);
-  return '<section class="diary-water"><div><b>Вода</b><small>' + num(entry.water * 0.25, 2) + ' л · одна позначка 250 мл</small></div><div class="diary-water-dots">' + Array.from({ length: 8 }, (_, i) => '<button class="' + (i < entry.water ? "on" : "") + '" data-action="water-set" data-value="' + (i + 1) + '" aria-label="' + (i + 1) + ' склянок">' + icon("water") + '</button>').join("") + '</div></section>';
+  const glasses = n => { const a = n % 10, b = n % 100; return n + (a === 1 && b !== 11 ? " склянка" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? " склянки" : " склянок"); };
+  return '<section class="diary-water"><div><b>Вода</b><small>' + num(entry.water * 0.25, 2) + ' л · одна позначка 250 мл</small></div><div class="diary-water-dots">' + Array.from({ length: 8 }, (_, i) => '<button class="' + (i < entry.water ? "on" : "") + '" data-action="water-set" data-value="' + (i + 1) + '" aria-label="' + glasses(i + 1) + '">' + icon("water") + '</button>').join("") + '</div></section>';
 }
 
 foodView = function () {
@@ -483,7 +484,7 @@ function diaryPaintPortion() {
 
 function diaryPaint() {
   if (!diary.open) return;
-  const head = '<div class="diary-sheet-head"><div><span class="tiny-cap">' + esc(fdate(diary.date, true)) + '</span><div class="diary-type-row">' + DIARY_MEALS.map(([type, name]) => '<button class="' + (diary.type === type ? "on" : "") + '" data-action="diary-type" data-type="' + type + '">' + name + '</button>').join("") + '</div></div><button class="diary-done" data-action="diary-done">Готово</button></div>';
+  const head = '<div class="diary-sheet-head"><span class="tiny-cap">' + esc(fdate(diary.date, true)) + '</span><button class="diary-done" data-action="diary-done">Готово</button><div class="diary-type-row">' + DIARY_MEALS.map(([type, name]) => '<button class="' + (diary.type === type ? "on" : "") + '" data-action="diary-type" data-type="' + type + '">' + name + '</button>').join("") + '</div></div>';
   const search = '<label class="diary-search"><span aria-hidden="true">' + icon("search") + '</span><input id="diarySearch" type="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Продукт, страва або напій…" aria-label="Пошук продукту" value="' + esc(diary.query) + '">' + (diary.query ? '<button type="button" data-action="diary-clear" aria-label="Очистити">×</button>' : "") + '</label>';
   const body = diary.view === "card" ? diaryCard() : diary.view === "custom" ? diaryCustomForm() : (diary.query.trim() ? diaryResults() : diaryHome());
   const html = '<div class="diary-sheet-shell">' + head + (diary.view === "card" || diary.view === "custom" ? "" : search) + '<div class="diary-sheet-body" id="diaryBody">' + body + '</div></div>';

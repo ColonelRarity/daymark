@@ -54,9 +54,9 @@
 #modal.diary-sheet #closeModal{width:40px;height:40px;font-size:22px}
 #modal.diary-sheet #modalBody{flex:1;min-height:0;display:flex;flex-direction:column}
 .diary-sheet-shell{display:flex;flex-direction:column;flex:1;min-height:0}
-.diary-sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:4px 14px 8px 18px}
+.diary-sheet-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 10px;padding:4px 14px 8px 18px}
 .diary-sheet-head .tiny-cap{color:var(--muted);font-size:11px}
-.diary-type-row{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:6px -18px 0;padding:0 18px;max-width:calc(100vw - 90px)}
+.diary-type-row{grid-column:1 / -1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0;padding:0;min-width:0;max-width:100%}
 .diary-type-row::-webkit-scrollbar{display:none}
 .diary-type-row button{white-space:nowrap;padding:8px 12px;border-radius:20px;background:#e9ece3;font-size:13px;font-weight:600}
 .diary-type-row button.on{background:var(--ink);color:#fff}

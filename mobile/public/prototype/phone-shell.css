@@ -20,7 +20,8 @@ dialog {
   z-index: 30;
   min-height: 48px;
   padding-top: 4px;
-  background: inherit;
+  background: #f4f5f0;
+  box-shadow: 0 10px 0 #f4f5f0;
 }
 #closeModal {
   position: relative;
