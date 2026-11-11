@@ -4,3 +4,5 @@ node_modules/
 *.log
 daymark-source.zip
 mobile/.expo/
+mobile/MarkKey.local
+**/MarkKey.local

@@ -12,7 +12,12 @@ enum DaymarkServices {
     let body: Data
   }
 
+  static func prepare() {
+    MarkBridge.importBundledKey()
+  }
+
   static func response(for method: String, path: String, body: Data) -> Answer? {
+    MarkBridge.importBundledKey()
     let route = String(path.split(separator: "?").first ?? Substring(path))
     switch (method, route) {
     case ("GET", "/account"):
@@ -282,6 +287,21 @@ private enum GoogleDrive {
 }
 
 private enum MarkBridge {
+  static func importBundledKey() {
+    guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+    let local = documents.appendingPathComponent("MarkKey.local")
+    if let text = try? String(contentsOf: local, encoding: .utf8) {
+      let key = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { $0.hasPrefix("sk-") } ?? ""
+      if key.count >= 20 {
+        SecretStore.set("mark-key", key)
+        try? FileManager.default.removeItem(at: local)
+      }
+    }
+    if !FileManager.default.fileExists(atPath: local.path) {
+      try? "# Один рядок, що починається на sk-.\n".write(to: local, atomically: true, encoding: .utf8)
+    }
+  }
+
   static func status() -> Data {
     serviceJSON(["ok": true, "hasKey": !(SecretStore.get("mark-key") ?? "").isEmpty, "speech": true])
   }

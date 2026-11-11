@@ -8,6 +8,7 @@ enum PrototypeServer {
   static let port: UInt16 = 14711
 
   static func start() {
+    DaymarkServices.prepare()
     signal(SIGPIPE, ignoreSignal)
     let ready = DispatchSemaphore(value: 0)
     DispatchQueue.global(qos: .userInitiated).async {
