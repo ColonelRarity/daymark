@@ -17,5 +17,15 @@
 .mark-suggestions small{color:var(--muted)}
 .mark-key{display:grid;gap:8px}
 .mark-key input{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit}
+.snap-sheet{display:grid;gap:12px}
+.snap-sheet .modal-title{margin:0;font-size:28px;line-height:1.05}
+.snap-sheet .photo-zone[hidden]{display:none}
+.snap-sheet .upload-preview{width:100%;max-height:180px;object-fit:cover;border-radius:16px;display:block}
+.snap-card{display:grid;gap:8px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px}
+.snap-card b{font-size:17px}
+.snap-card p{margin:0;color:var(--muted)}
+.snap-types{display:flex;flex-wrap:wrap;gap:6px}
+.snap-types button{border-radius:999px;padding:6px 10px;background:#f4f5f0}
+.snap-types button.on{background:#171a1c;color:#fff}
 .account-card{display:grid;gap:10px;margin-bottom:14px}
 .account-card .account-actions{display:flex;gap:8px;flex-wrap:wrap}

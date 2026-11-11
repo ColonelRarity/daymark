@@ -31,12 +31,45 @@
     return { grams: null, unit: "g", fraction: null };
   }
 
+  const FILLER = /^(?:алло|ало|алё|точка|крапка|привіт|привет|доброго|добрий|день|це|ну|от|так|марк|слухай|запиши|запишіть|будь|ласка)[\s,.:;!-]*/i;
+  const NOISE = "(?:алло|ало|точка|крапка|привіт|привет|це|кучі|куча|відсотків|відсоток|відсотки|процентів|біло)";
+
+  function stripNoise(value) {
+    return String(value || "").replace(new RegExp("(^|[^A-Za-zА-Яа-яІіЇїЄєҐґ])" + NOISE + "(?=$|[^A-Za-zА-Яа-яІіЇїЄєҐґ])", "gi"), "$1 ");
+  }
+
+  function dedupeWords(value) {
+    const words = String(value || "").split(/\s+/).filter(Boolean);
+    for (let size = 3; size >= 1; size -= 1) {
+      for (let index = 0; index + size * 2 <= words.length; index += 1) {
+        const left = words.slice(index, index + size).join(" ").toLocaleLowerCase("uk");
+        const right = words.slice(index + size, index + size * 2).join(" ").toLocaleLowerCase("uk");
+        if (left === right) {
+          words.splice(index + size, size);
+          index -= 1;
+        }
+      }
+    }
+    return words.join(" ");
+  }
+
+  function cleanSpeech(text) {
+    let body = String(text || "").replace(/[«»"“”]/g, " ");
+    let guard = 0;
+    while (FILLER.test(body) && guard < 8) {
+      body = body.replace(FILLER, "");
+      guard += 1;
+    }
+    return stripNoise(dedupeWords(body)).replace(/\s+/g, " ").trim();
+  }
+
   function items(text) {
-    let body = String(text || "");
+    let body = cleanSpeech(text);
     for (const [pattern] of MEAL) body = body.replace(pattern, " ");
     body = body.replace(/повн[а-яіїєґ'’]*\s+тарілк[а-яіїєґ'’]*|половин[а-яіїєґ'’]*(?:\s+тарілк[а-яіїєґ'’]*)?|третин[а-яіїєґ'’]*|чверт[а-яіїєґ'’]*|тарілк[а-яіїєґ'’]*/gi, " ");
-    body = body.replace(/\d+(?:[.,]\d+)?\s*(?:грам(?:ів|и)?|гр|г|мл|ml|g)\b/gi, " ");
-    return body.split(/,| і | та |\+|також|;/i).map(part => part.replace(/[^0-9A-Za-zА-Яа-яІіЇїЄєҐґ'’\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(part => part.length > 1);
+    body = body.replace(/\d+(?:[.,]\d+)?\s*(?:грам(?:ів|и)?|гр|г|мл|ml|g|%)/gi, " ");
+    body = stripNoise(body);
+    return body.split(/,| і | та | з |\+|також|;/i).map(part => stripNoise(part).replace(/\d+/g, " ").replace(/[^0-9A-Za-zА-Яа-яІіЇїЄєҐґ'’\s-]/g, " ").replace(/\s+/g, " ").trim()).filter(part => part.length > 1 && !/^(алло|ало|точка|привіт|це|біло|відсотків)$/i.test(part));
   }
 
   function intent(text) {
@@ -72,6 +105,6 @@
     return "motivate";
   }
 
-  const api = { parseMealUtterance: parseMealUtterance, isOffTopic: isOffTopic, toneFor: toneFor, mealType: mealType };
+  const api = { parseMealUtterance: parseMealUtterance, isOffTopic: isOffTopic, toneFor: toneFor, mealType: mealType, cleanSpeech: cleanSpeech };
   root.MarkParse = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -66,12 +66,44 @@ function markSaveMeal(meal) {
   return persist();
 }
 
+function markStem(word) {
+  const w = typeof diaryNormalize === "function" ? diaryNormalize(word) : String(word || "").toLocaleLowerCase("uk");
+  if (w.length < 5) return w;
+  return w.replace(/(ами|ями|ою|ею|ому|ему|ові|еві|ах|ях|ів|їв|ий|ій|им|ім|ом|ем|ам|ям)$/u, "") || w;
+}
+
+function markHay(food) {
+  return typeof diaryNormalize === "function" ? diaryNormalize([food.name, food.aliases, food.originalName].filter(Boolean).join(" ")) : String(food.name || "");
+}
+
+function markHit(query, stems) {
+  if (typeof diarySearch !== "function" || !query) return null;
+  const list = diarySearch(query, 8).list;
+  return list.find(food => {
+    const name = typeof diaryNormalize === "function" ? diaryNormalize(food.name) : String(food.name || "");
+    return stems.every(stem => name.includes(stem.slice(0, Math.min(4, stem.length))));
+  }) || null;
+}
+
 function markMatchFoods(parsed) {
   if (typeof diarySearch !== "function") return [];
-  const found = [];
+  const stems = [];
   for (const query of parsed.items) {
-    const hit = diarySearch(query, 1).list[0];
-    if (hit) found.push(hit);
+    for (const word of String(query).split(/\s+/)) {
+      const stem = markStem(word);
+      if (stem.length >= 3) stems.push(stem);
+    }
+  }
+  const found = [];
+  const seen = new Set();
+  for (let index = 0; index < stems.length; index += 1) {
+    const pair = stems[index + 1] ? stems[index] + " " + stems[index + 1] : "";
+    const paired = pair ? markHit(pair, [stems[index], stems[index + 1]]) : null;
+    const hit = paired || markHit(stems[index], [stems[index]]);
+    if (paired) index += 1;
+    if (!hit || seen.has(hit.id)) continue;
+    seen.add(hit.id);
+    found.push(hit);
   }
   return found;
 }
@@ -160,10 +192,17 @@ async function markHandle(text) {
 }
 
 function markPaint() {
-  const box = $("markLog");
-  if (!box) return;
-  box.innerHTML = markLines.map(line => '<div class="mark-bubble ' + line.role + '">' + esc(line.text) + "</div>").join("") || '<div class="mark-bubble mark">Я Марк. Скажи «Вечеря, половина тарілки борщу» — запишу це в той самий щоденник, що й кнопка плюс.</div>';
-  box.scrollTop = box.scrollHeight;
+  const html = markLines.map(line => '<div class="mark-bubble ' + line.role + '">' + esc(line.text) + "</div>").join("");
+  const markBox = $("markLog");
+  const snapBox = $("snapLog");
+  if (markBox) {
+    markBox.innerHTML = html || '<div class="mark-bubble mark">Я Марк. Скажи «Вечеря, половина тарілки борщу» — запишу це в той самий щоденник, що й кнопка плюс.</div>';
+    markBox.scrollTop = markBox.scrollHeight;
+  }
+  if (snapBox) {
+    snapBox.innerHTML = html || '<div class="mark-bubble mark">Я Марк. Сфотографуй тарілку або скажи «Вечеря, половина тарілки борщу». У щоденник запишу лише після кнопки «Записати».</div>';
+    snapBox.scrollTop = snapBox.scrollHeight;
+  }
   const ideas = markSuggestions(markContext());
   const host = $("markIdeas");
   if (host) host.innerHTML = ideas.map(item => '<button type="button" data-action="mark-save-idea" data-id="' + item.id + '" data-slot="' + item.slot + '"><b>' + esc(item.title) + '</b><small>≈ ' + item.kcal + " ккал · " + item.note + "</small></button>").join("");
@@ -194,8 +233,7 @@ function markOpen() {
   };
 }
 
-async function markListen() {
-  const button = $("markMic");
+async function markHear(apply, button) {
   if (!button || markBusy) return;
   if (location.port === "14711") {
     button.classList.add("live");
@@ -203,7 +241,7 @@ async function markListen() {
     try {
       const response = await fetch("/mark/listen", { method: "POST" });
       const data = await response.json();
-      if (data && data.text) await markHandle(data.text);
+      if (data && data.text) await apply(data.text);
       else toast(data && data.reason === "denied" ? "Дозволь мікрофон і розпізнавання мовлення." : "Не почув фразу. Спробуй ще раз.");
     } catch (error) {
       toast("Голос зараз недоступний.");
@@ -217,8 +255,15 @@ async function markListen() {
   if (!Speech) { toast("У цьому браузері скажи текстом. На телефоні слухає застосунок."); return; }
   const recognition = new Speech();
   recognition.lang = "uk-UA";
-  recognition.onresult = event => { const text = event.results[0][0].transcript; if (text) markHandle(text); };
-  recognition.start();
+  recognition.onresult = event => {
+    const text = event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript;
+    if (text) apply(text);
+  };
+  try { recognition.start(); } catch (error) { toast("Голос зараз недоступний."); }
+}
+
+function markListen() {
+  return markHear(markHandle, $("markMic"));
 }
 
 async function markPlate(uri) {
@@ -243,20 +288,291 @@ actions["mark-save-idea"] = button => {
   markOpen();
 };
 
-const markPhoto = uploadPlate;
-uploadPlate = async function (event) {
-  await markPhoto(event);
-  if (!modalData.photo || !$("photoFeedback")) return;
-  const vision = await markPlate(modalData.photo);
-  if (!vision || !Array.isArray(vision.foods) || !vision.foods.length) return;
-  const box = document.createElement("div");
-  box.className = "mark-suggestions";
-  box.innerHTML = "<p class=\"note\">Марк бачить порції відносно тарілки. Оцінка приблизна. Запис ляже в щоденник лише після кнопки.</p>" + vision.foods.map((food, index) => '<button type="button" data-mark-plate="' + index + '"><b>' + esc(food.name) + "</b><small>" + (food.fraction ? Math.round(food.fraction * 100) + "% тарілки · " : "") + (food.grams ? food.grams + " г · " : "") + "≈ " + food.kcal + " ккал</small></button>").join("");
-  $("photoFeedback").appendChild(box);
-  box.querySelectorAll("button").forEach(button => button.onclick = () => {
-    const food = vision.foods[Number(button.dataset.markPlate)];
-    const type = MarkParse.mealType(food.meal || "") || (typeof diaryTypeForNow === "function" ? diaryTypeForNow() : "dinner");
-    const meal = { id: uid(), name: String(food.name || "Страва").slice(0, 140), type: type, grams: Number(food.grams) || Math.round(350 * (Number(food.fraction) || 0.7)), unit: "g", kcal: Math.round(Number(food.kcal) || 0), p: food.p == null ? null : Math.round(Number(food.p)), f: food.f == null ? null : Math.round(Number(food.f)), c: food.c == null ? null : Math.round(Number(food.c)), source: "mark", emoji: "◌" };
-    if (markSaveMeal(meal)) toast("Записано як ручний прийом: " + meal.name);
-  });
+let snapDraft = [];
+let snapToken = 0;
+
+function snapPortionText(meal) {
+  if (meal.fraction === 1) return "повна тарілка";
+  if (meal.fraction === 0.5) return "половина тарілки";
+  if (meal.fraction === 0.33) return "третина тарілки";
+  if (meal.fraction === 0.25) return "чверть тарілки";
+  if (meal.fraction) return Math.round(meal.fraction * 100) + "% тарілки";
+  return "";
+}
+
+function snapApplyPortion(meal, parsed) {
+  const next = Object.assign({}, meal);
+  if (parsed.type) next.type = parsed.type;
+  if (parsed.unit === "ml") next.unit = "ml";
+  let grams = meal.grams;
+  if (parsed.grams) grams = Math.round(parsed.grams);
+  else if (parsed.fraction) grams = Math.round(350 * parsed.fraction);
+  if (parsed.fraction) next.fraction = parsed.fraction;
+  if (!parsed.grams && !parsed.fraction) return next;
+  const ratio = meal.grams ? grams / meal.grams : 1;
+  const rescale = value => value == null || value === "" ? null : Math.round(Number(value) * ratio * 10) / 10;
+  next.grams = Math.max(1, grams);
+  next.kcal = rescale(meal.kcal);
+  next.p = rescale(meal.p);
+  next.f = rescale(meal.f);
+  next.c = rescale(meal.c);
+  return next;
+}
+
+function snapFromFood(food, parsed, type) {
+  const meal = markMealFromFood(food, parsed, type);
+  meal.source = "photo";
+  meal.fraction = parsed.fraction;
+  meal.per100 = { kcal: food.kcal, p: food.p, f: food.f, c: food.c };
+  return meal;
+}
+
+function snapFromVision(food) {
+  const type = MarkParse.mealType(food.meal || "") || (typeof diaryTypeForNow === "function" ? diaryTypeForNow() : "snack");
+  const fraction = Number(food.fraction) || null;
+  const grams = Number(food.grams) || Math.round(350 * (fraction || 0.7));
+  const numberOrNull = value => value == null || value === "" ? null : Number(value);
+  return {
+    id: uid(),
+    name: String(food.name || "Страва").slice(0, 140),
+    type: type,
+    grams: Math.max(1, Math.round(grams)),
+    unit: "g",
+    kcal: numberOrNull(food.kcal),
+    p: numberOrNull(food.p),
+    f: numberOrNull(food.f),
+    c: numberOrNull(food.c),
+    source: "photo",
+    emoji: "◌",
+    fraction: fraction
+  };
+}
+
+function snapPaintDraft() {
+  const host = $("snapDraft");
+  if (!host) return;
+  if (!snapDraft.length) { host.innerHTML = ""; return; }
+  host.innerHTML = snapDraft.map((meal, index) => {
+    const portion = snapPortionText(meal);
+    const types = Object.entries(MARK_NAMES).map(([type, name]) => '<button type="button" data-action="snap-type" data-index="' + index + '" data-type="' + type + '"' + (meal.type === type ? ' class="on"' : "") + ">" + name + "</button>").join("");
+    const kcal = meal.kcal == null ? "калорії ще не оцінені" : "≈ " + Math.round(meal.kcal) + " ккал";
+    const saved = meal.saved ? '<p class="note">У щоденнику.</p>' : '<button class="btn blue full" type="button" data-action="snap-save" data-index="' + index + '">Записати в щоденник</button>';
+    return '<article class="snap-card"><b>' + esc(meal.name) + '</b><p>' + kcal + " · " + meal.grams + (meal.unit === "ml" ? " мл" : " г") + (portion ? " · " + portion : "") + '</p><div class="snap-types">' + types + "</div>" + saved + "</article>";
+  }).join("");
+}
+
+function snapPieceGrams(food) {
+  const name = typeof diaryNormalize === "function" ? diaryNormalize(food.name) : String(food.name || "");
+  if (/хліб|батон|булоч|лаваш/.test(name)) return 40;
+  if (/шинк|ковбас|сир|бекон|масло/.test(name)) return 25;
+  if (/помідор|огір|салат|овоч|зелен|перець/.test(name)) return 40;
+  if (/соус|майонез|сметан/.test(name)) return 15;
+  const serving = Number(food.serving) || 80;
+  return Math.max(15, Math.min(serving, 80));
+}
+
+function snapSum(foods, key, gramsOf) {
+  if (foods.some(food => food[key] === null || food[key] === undefined || food[key] === "")) return null;
+  return foods.reduce((sum, food) => sum + Number(food[key]) * gramsOf(food) / 100, 0);
+}
+
+function snapFromHits(hits, parsed, type) {
+  const norm = food => typeof diaryNormalize === "function" ? diaryNormalize(food.name) : String(food.name || "");
+  const dish = hits.find(food => /бутерброд|сендвіч|сандвіч/.test(norm(food)));
+  const parts = hits.filter(food => food !== dish);
+  const used = parts.length >= 2 ? parts : hits;
+  const bits = used.slice(0, 4).map(food => food.name);
+  const saidSandwich = /бутерброд|сендвіч|сандвіч/.test((parsed.items || []).join(" "));
+  const name = ((dish || saidSandwich) && used.length >= 2 ? "Бутерброд: " : "") + bits.join(", ");
+  const gramsOf = food => snapPieceGrams(food);
+  let grams = used.reduce((sum, food) => sum + gramsOf(food), 0);
+  let kcal = snapSum(used, "kcal", gramsOf);
+  let p = snapSum(used, "p", gramsOf);
+  let f = snapSum(used, "f", gramsOf);
+  let c = snapSum(used, "c", gramsOf);
+  const scale = parsed.grams ? parsed.grams / grams : parsed.fraction || 1;
+  grams *= scale;
+  if (kcal !== null) kcal *= scale;
+  if (p !== null) p *= scale;
+  if (f !== null) f *= scale;
+  if (c !== null) c *= scale;
+  const round1 = value => value === null ? null : Math.round(value * 10) / 10;
+  return {
+    id: uid(),
+    name: name.slice(0, 140),
+    type: type,
+    grams: Math.max(1, Math.round(grams)),
+    unit: "g",
+    kcal: kcal === null ? null : Math.round(kcal),
+    p: round1(p),
+    f: round1(f),
+    c: round1(c),
+    source: "photo",
+    emoji: "◌",
+    fraction: parsed.fraction || null
+  };
+}
+
+function snapOpen() {
+  modalData = { mode: "photo", photo: null };
+  openModal("МАРК / СФОНТАЙ", '<div class="snap-sheet"><h2 class="modal-title">Марк порахує</h2><p class="modal-sub">Фото, голос або текст. У щоденник запис лягає лише після підтвердження.</p><label class="photo-zone" id="snapZone">' + (typeof icon === "function" ? icon("camera") : "") + '<strong>Їжа, кава чи етикетка</strong><small>Камера або галерея · фото лишається на телефоні</small><input id="plateFile" type="file" accept="image/*" hidden></label><div id="photoFeedback"></div><div id="snapDraft"></div><div class="mark-log" id="snapLog"></div><form class="mark-compose" id="snapForm"><button class="mark-mic" type="button" id="snapMic" aria-label="Сказати Марку">🎤</button><input name="text" maxlength="400" placeholder="Вечеря, половина тарілки, без сметани" autocomplete="off"><button class="mark-send" type="submit" aria-label="Надіслати">↗</button></form><p class="small muted">Голос і текст уточнюють оцінку. Калорії приблизні, це не зважування.</p></div>');
+  snapPaintDraft();
+  markPaint();
+  $("plateFile").onchange = snapTake;
+  $("snapForm").onsubmit = event => {
+    event.preventDefault();
+    const text = new FormData(event.target).get("text");
+    if (!text || markBusy) return;
+    event.target.reset();
+    snapHandle(String(text));
+  };
+  $("snapMic").onclick = () => markHear(snapHandle, $("snapMic"));
+}
+
+async function snapRead(file) {
+  if (!file.type.startsWith("image/") || file.size > 25 * 1024 * 1024) { toast("Обери фото до 25 МБ"); return ""; }
+  modalData.uploadBusy = true;
+  try {
+    const source = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const image = await new Promise((resolve, reject) => {
+      const picture = new Image();
+      picture.onload = () => resolve(picture);
+      picture.onerror = reject;
+      picture.src = source;
+    });
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1, 720 / Math.max(image.width, image.height));
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.72);
+  } catch (error) {
+    toast("Не вдалося прочитати фото.");
+    return "";
+  } finally {
+    modalData.uploadBusy = false;
+  }
+}
+
+async function snapFromImage(uri) {
+  const vision = await markPlate(uri);
+  if (vision && Array.isArray(vision.foods) && vision.foods.length) return { meals: vision.foods.slice(0, 4).map(snapFromVision), via: "Марк подивився на тарілку. Оцінка приблизна." };
+  if (typeof recognizePlate !== "function") return { meals: [], via: "" };
+  try {
+    const guesses = await recognizePlate(uri);
+    const top = guesses[0];
+    if (!top) return { meals: [], via: "" };
+    const parsed = MarkParse.parseMealUtterance(top.query);
+    parsed.items = parsed.items.length ? parsed.items : [top.query];
+    const type = parsed.type || (typeof diaryTypeForNow === "function" ? diaryTypeForNow() : "snack");
+    const foods = markMatchFoods(parsed);
+    const meals = foods.length ? foods.map(food => snapFromFood(food, parsed, type)) : [{ id: uid(), name: top.query, type: type, grams: 180, unit: "g", kcal: null, p: null, f: null, c: null, source: "photo", emoji: "◌", fraction: null }];
+    return { meals: meals, via: "На фото схоже на «" + top.query + "». Калорії з бази, порцію можна уточнити голосом." };
+  } catch (error) {
+    return { meals: [], via: "" };
+  }
+}
+
+async function snapTake(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const uri = await snapRead(file);
+  if (!uri || !$("photoFeedback")) return;
+  modalData.photo = uri;
+  const zone = $("snapZone");
+  if (zone) zone.hidden = true;
+  const token = ++snapToken;
+  $("photoFeedback").innerHTML = '<img class="upload-preview" src="' + uri + '" alt="Твоє фото тарілки"><p class="note">Марк дивиться на тарілку…</p>';
+  const result = await snapFromImage(uri);
+  if (token !== snapToken || !$("photoFeedback")) return;
+  if (result.meals.length) {
+    const chosen = snapDraft.find(meal => !meal.saved);
+    snapDraft = result.meals.map(meal => chosen ? Object.assign(meal, { type: chosen.type }) : meal);
+  }
+  const note = result.meals.length ? result.via : "Не бачу страву на фото. Скажи, що це: «Вечеря, борщ, половина тарілки».";
+  $("photoFeedback").innerHTML = '<img class="upload-preview" src="' + uri + '" alt="Твоє фото тарілки"><p class="note">' + esc(note) + "</p>";
+  markPush("mark", note);
+  snapPaintDraft();
+  markPaint();
+}
+
+async function snapHandle(text) {
+  const parsed = MarkParse.parseMealUtterance(text);
+  const context = markContext();
+  markPush("user", text);
+  if (parsed.offTopic) {
+    markPush("mark", markLocalReply(parsed, context, []));
+    markPaint();
+    return;
+  }
+  if (parsed.intent === "meditation" || parsed.intent === "workout" || parsed.intent === "advice" || parsed.intent === "emotion") {
+    const local = markLocalReply(parsed, context, []);
+    const model = await markModelReply(parsed, context);
+    markPush("mark", model || local);
+    markPaint();
+    return;
+  }
+  const type = parsed.type || (snapDraft[0] && snapDraft[0].type) || (typeof diaryTypeForNow === "function" ? diaryTypeForNow() : "snack");
+  if (parsed.items.length) {
+    const foods = markMatchFoods(parsed);
+    if (foods.length >= 2) snapDraft = snapDraft.filter(meal => meal.saved).concat([snapFromHits(foods, parsed, type)]);
+    else if (foods.length === 1) snapDraft = snapDraft.filter(meal => meal.saved).concat([snapFromFood(foods[0], parsed, type)]);
+    else if (snapDraft.some(meal => !meal.saved)) snapDraft = snapDraft.map(meal => meal.saved ? meal : snapApplyPortion(Object.assign({}, meal, { type: type }), parsed));
+    else {
+      const short = parsed.items.filter(item => item.length <= 40).slice(0, 3).join(", ");
+      if (short) snapDraft = snapDraft.filter(meal => meal.saved).concat([{ id: uid(), name: short.slice(0, 80), type: type, grams: parsed.grams || Math.round(350 * (parsed.fraction || 0.7)), unit: parsed.unit || "g", kcal: null, p: null, f: null, c: null, source: "photo", emoji: "◌", fraction: parsed.fraction }]);
+    }
+  } else if (snapDraft.some(meal => !meal.saved) && (parsed.type || parsed.grams || parsed.fraction)) {
+    snapDraft = snapDraft.map(meal => meal.saved ? meal : snapApplyPortion(meal, parsed));
+  }
+  const pending = snapDraft.filter(meal => !meal.saved);
+  const line = pending.map(meal => meal.name + (meal.kcal == null ? "" : " ≈ " + Math.round(meal.kcal) + " ккал")).join(", ");
+  const reply = pending.length ? "Бачу " + line + ". У щоденник це ляже після кнопки «Записати»." : "Скажи страву і прийом, наприклад «Вечеря, половина тарілки борщу», або сфотографуй тарілку.";
+  markPush("mark", reply);
+  snapPaintDraft();
+  markPaint();
+}
+
+function snapCommit(index) {
+  const draft = snapDraft[index];
+  if (!draft || draft.saved) return;
+  const meal = {
+    id: draft.id,
+    name: draft.name,
+    type: draft.type,
+    grams: draft.grams,
+    unit: draft.unit === "ml" ? "ml" : "g",
+    kcal: draft.kcal == null ? null : Math.round(Number(draft.kcal)),
+    p: draft.p == null ? null : Math.round(Number(draft.p)),
+    f: draft.f == null ? null : Math.round(Number(draft.f)),
+    c: draft.c == null ? null : Math.round(Number(draft.c)),
+    source: "photo",
+    emoji: draft.emoji || "◌"
+  };
+  if (modalData.photo && !snapDraft.some(item => item.saved)) meal.photo = modalData.photo;
+  if (!markSaveMeal(meal)) { toast("Не вдалося записати."); return; }
+  draft.saved = true;
+  toast("Записано в «" + (MARK_NAMES[meal.type] || "щоденник") + "»: " + meal.name + (meal.kcal == null ? "" : " · ≈ " + meal.kcal + " ккал"));
+  try { render(); } catch (error) {}
+  snapPaintDraft();
+  markPaint();
+}
+
+actions["snap-save"] = button => snapCommit(Number(button.dataset.index));
+actions["snap-type"] = button => {
+  const meal = snapDraft[Number(button.dataset.index)];
+  if (!meal || meal.saved || !MARK_NAMES[button.dataset.type]) return;
+  meal.type = button.dataset.type;
+  snapPaintDraft();
+};
+actions.photo = snapOpen;
+
+const snapFoodView = foodView;
+foodView = function () {
+  return snapFoodView().replace("Сценарій AI-оцінки ↗", "Голос, текст і калорії Марка ↗");
 };

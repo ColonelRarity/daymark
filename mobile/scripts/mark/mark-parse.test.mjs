@@ -21,6 +21,13 @@ test("a phrase names the meal, the plate share and the food", () => {
   assert.equal(sandbox.window.MarkParse.isOffTopic("яка сьогодні погода і що вдягнути"), true);
   assert.equal(sandbox.window.MarkParse.isOffTopic("погода ніяка, запиши вечерю"), false);
   assert.equal(sandbox.window.MarkParse.toneFor({ checkIn: { energy: "low" } }), "support");
+  const noisy = sandbox.window.MarkParse.parseMealUtterance("Алло точка привіт це бутерброд з курячою шинкою курячою шинкою помідором та хлібом зерновим і крем сиром біло 55 відсотків");
+  assert.ok(noisy.items.some(item => /бутерброд/.test(item)));
+  assert.ok(noisy.items.some(item => /шинк/.test(item)));
+  assert.ok(noisy.items.some(item => /помідор/.test(item)));
+  assert.ok(noisy.items.some(item => /хліб/.test(item)));
+  assert.ok(noisy.items.some(item => /крем/.test(item) && /сир/.test(item)));
+  assert.equal(noisy.items.some(item => /алло|точка|привіт|відсотків|біло/i.test(item)), false);
 });
 
 function storeEnvelope(revision, mealName) {
